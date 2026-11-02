@@ -7,7 +7,9 @@
 // 3. Avisa al dueño de un diario cuando alguien pide acceso con su código.
 
 export const WINDOW_MIN = 90;
-export const MEALS = ["desayuno", "cena"];
+export const MEALS = ["desayuno", "comida", "cena"];
+// Si alguien guardó sus horas antes de que existiera el aviso de la comida, se usa este.
+export const DEFAULT_REM = { comida: { time: "16:00", on: true } };
 
 /** Fecha y minuto del día en la zona horaria dada. */
 export function localParts(date, tz) {
@@ -20,7 +22,7 @@ export function localParts(date, tz) {
 export function dueMeals(rem, parts, lastSent = {}) {
   const out = [];
   for (const meal of MEALS) {
-    const r = rem?.[meal];
+    const r = rem?.[meal] ?? DEFAULT_REM[meal];
     if (!r || r.on === false || typeof r.time !== "string") continue;
     const [h, m] = r.time.split(":").map(Number);
     if (Number.isNaN(h) || Number.isNaN(m)) continue;
@@ -191,7 +193,7 @@ async function main() {
         tokens,
         data: {
           title: "🪥 Hora de cepillarse",
-          body: `¿Te has lavado los dientes después de ${meal === "cena" ? "cenar" : "desayunar"}?`,
+          body: `¿Te has lavado los dientes después de ${{ desayuno: "desayunar", comida: "comer", cena: "cenar" }[meal]}?`,
           meal, dia: parts.dia, diario: rem.diarioId
         },
         webpush: { headers: { Urgency: "high", TTL: String(WINDOW_MIN * 60) } }

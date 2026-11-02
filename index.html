@@ -357,6 +357,11 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
         <label class="switch"><input type="checkbox" id="on-desayuno" checked aria-label="Aviso del desayuno activado"><span></span></label>
       </div>
       <div class="li">
+        <div class="txt"><b>Después de comer</b><span>Solo avisa si aún no está marcado</span></div>
+        <input type="time" id="t-comida" value="16:00" aria-label="Hora del aviso de la comida">
+        <label class="switch"><input type="checkbox" id="on-comida" checked aria-label="Aviso de la comida activado"><span></span></label>
+      </div>
+      <div class="li">
         <div class="txt"><b>Después de cenar</b><span>Solo avisa si aún no está marcado</span></div>
         <input type="time" id="t-cena" value="23:00" aria-label="Hora del aviso de la cena">
         <label class="switch"><input type="checkbox" id="on-cena" checked aria-label="Aviso de la cena activado"><span></span></label>
@@ -613,7 +618,9 @@ let visits = [];
 let sel = keyOf(today());
 let month = new Date(today().getFullYear(), today().getMonth(), 1);
 let unsubs = [];
-let REM = {desayuno:{time:"09:30",on:true}, cena:{time:"23:00",on:true}};
+let REM = {desayuno:{time:"09:30",on:true}, comida:{time:"16:00",on:true}, cena:{time:"23:00",on:true}};
+const REM_MEALS = ["desayuno","comida","cena"];
+const VERB = {desayuno:"desayunar", comida:"comer", cena:"cenar"};
 const isOwner = () => D?.role === "owner";
 const canWrite = () => D && (D.role === "owner" || D.role === "editar");
 
@@ -815,10 +822,14 @@ function renderBanner(){
   const now = today(), dd = dayData(keyOf(now)), mins = now.getHours()*60+now.getMinutes();
   const at = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
   let which = null;
-  if(!dd.cena && mins >= at(REM.cena.time)) which = "cena";
-  else if(!dd.desayuno && mins >= at(REM.desayuno.time) && mins < Math.max(at(REM.desayuno.time)+360, 16*60)) which = "desayuno";
+  // el último aviso que ya ha pasado y sigue sin marcar, hasta que llegue la hora del siguiente
+  const on = REM_MEALS.filter(k => REM[k].on !== false).sort((a,b) => at(REM[a].time) - at(REM[b].time));
+  for(let i = on.length - 1; i >= 0; i--){
+    const k = on[i], start = at(REM[k].time), end = i < on.length - 1 ? at(REM[on[i+1]].time) : 24*60;
+    if(mins >= start && mins < end){ if(!dd[k]) which = k; break; }
+  }
   b.hidden = !which;
-  if(which){ $("#bannerText").textContent = `¿Te has lavado los dientes después de ${which==="cena"?"cenar":"desayunar"}?`; $("#bannerBtn").dataset.k = which; }
+  if(which){ $("#bannerText").textContent = `¿Te has lavado los dientes después de ${VERB[which]}?`; $("#bannerBtn").dataset.k = which; }
 }
 
 function renderVisits(){
@@ -1049,9 +1060,9 @@ async function loadRem(){
   try{
     const s = await F.getDoc(F.doc(db,"usuarios",auth.currentUser.uid));
     const r = s.exists() ? s.data().rem : null;
-    if(r && r.diarioId === D.id){ REM = {desayuno:{...REM.desayuno, ...r.desayuno}, cena:{...REM.cena, ...r.cena}}; }
+    if(r && r.diarioId === D.id){ for(const k of REM_MEALS) REM[k] = {...REM[k], ...(r[k] || {})}; }
   }catch(e){}
-  for(const k of ["desayuno","cena"]){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
+  for(const k of REM_MEALS){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
   renderPerm(); renderBanner();
 }
 function renderPerm(){
@@ -1077,10 +1088,10 @@ async function enablePush(){
 }
 async function saveRem(withToken){
   const next = {};
-  for(const k of ["desayuno","cena"]) next[k] = {time: $("#t-"+k).value || REM[k].time, on: $("#on-"+k).checked};
+  for(const k of REM_MEALS) next[k] = {time: $("#t-"+k).value || REM[k].time, on: $("#on-"+k).checked};
   REM = next;
   const data = {email: myEmail(), nombre: auth.currentUser.displayName || "",
-    rem: {diarioId: D.id, tz: timeZone, desayuno: next.desayuno, cena: next.cena}};
+    rem: {diarioId: D.id, tz: timeZone, desayuno: next.desayuno, comida: next.comida, cena: next.cena}};
   if(withToken) data.tokens = F.arrayUnion(withToken);
   await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
   renderBanner();
@@ -1141,7 +1152,7 @@ $("#remSave").onclick = async () => {
     try{ token = localStorage.getItem("fcmToken"); }catch(e){}
     await saveRem(token);
     const f = k => REM[k].on ? REM[k].time : "desactivado";
-    $("#remMsg").textContent = `Guardado. Desayuno: ${f("desayuno")} · Cena: ${f("cena")}.`;
+    $("#remMsg").textContent = `Guardado. Desayuno: ${f("desayuno")} · Comida: ${f("comida")} · Cena: ${f("cena")}.`;
     if(!hasToken()) toast("Guardado. Activa las notificaciones para recibir los avisos.");
   }catch(e){ $("#remMsg").textContent = "No se ha podido guardar. Revisa la conexión."; }
 };
