@@ -43,6 +43,7 @@ Todo es gratis y no hace falta tarjeta.
 
 1. Menú izquierdo → **Compilación → Authentication** → **Comenzar**.
 2. En **Método de acceso**, elige **Google**, actívalo, pon tu email de asistencia y guarda.
+3. Pulsa **Agregar proveedor nuevo** → **Correo electrónico/contraseña** → activa solo el primer interruptor → **Guardar**. Así se puede crear una cuenta con email, sin Google.
 
 **Base de datos**
 
