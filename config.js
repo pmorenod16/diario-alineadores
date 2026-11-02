@@ -4,7 +4,7 @@ export const firebaseConfig = {
   apiKey: "AIzaSyCWQA1KKzSssjvU4_03l8H2RH1cL44RfOA",
   authDomain: "diario-alineadores.firebaseapp.com",
   projectId: "diario-alineadores",
-  storageBucket: ""diario-alineadores.firebasestorage.app",
+  storageBucket: "diario-alineadores.firebasestorage.app",
   messagingSenderId: "799039943158",
   appId: "1:799039943158:web:0eb1e2cfd15611f52b57d7"
 };
