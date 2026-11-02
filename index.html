@@ -112,10 +112,30 @@ section{display:flex;flex-direction:column;gap:10px}
 .mk.d{background:var(--gum);border-radius:50%}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.75rem;color:var(--muted);margin-top:10px}
 .legend span{display:flex;align-items:center;gap:5px}
-.daydetail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.88rem;display:flex;flex-wrap:wrap;gap:6px 14px}
-.daydetail b{width:100%}
-.daydetail .ok{color:var(--accent);font-weight:600}
-.daydetail .no{color:var(--muted)}
+.dayview{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:12px;touch-action:pan-y}
+.dvhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dvtitle{text-align:center;min-width:0;flex:1}
+.dvtitle b{display:block;font-family:var(--display);font-size:1.3rem;font-weight:800;line-height:1.15}
+.dvtitle span{font-size:.82rem;color:var(--muted)}
+.dvmeals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dvm{border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px solid var(--line);background:var(--bg)}
+.dvm .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:1.1rem;background:var(--line);color:var(--muted)}
+.dvm b{font-size:.92rem}
+.dvm span{font-size:.75rem;color:var(--muted)}
+.dvm.ok{background:var(--accent-soft);border-color:var(--accent)}
+.dvm.ok .ic{background:var(--accent);color:#fff}
+.dvm.ok span{color:var(--accent);font-weight:700}
+.dvm.miss{background:var(--gum-soft);border-color:var(--gum)}
+.dvm.miss .ic{background:var(--gum);color:#fff}
+.dvm.miss span{color:var(--gum);font-weight:700}
+.dvlist{display:flex;flex-direction:column;gap:6px}
+.dvrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--bg);font-size:.92rem}
+.dvrow .dot{width:12px;height:12px;border-radius:4px;flex:none}
+.dvrow b{flex:1;min-width:0}
+.dvrow span{color:var(--muted);font-size:.85rem;text-align:right}
+.dvrow.off{opacity:.55}
+.dvsum{font-size:.85rem;color:var(--muted);text-align:center}
+.dvsum b{color:var(--ink)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
 .stat b{font-family:var(--display);font-size:1.35rem;display:block;font-variant-numeric:tabular-nums}
@@ -230,6 +250,21 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
     <button id="bannerBtn">Ya me los he lavado</button>
   </div>
 
+  <section id="secDay" aria-labelledby="h-day" hidden>
+    <h2 id="h-day">Día a día</h2>
+    <div class="dayview" id="dayView">
+      <div class="dvhead">
+        <button class="iconbtn" id="dvPrev" aria-label="Día anterior">‹</button>
+        <div class="dvtitle"><b id="dvDate"></b><span id="dvRel"></span></div>
+        <button class="iconbtn" id="dvNext" aria-label="Día siguiente">›</button>
+      </div>
+      <div class="dvmeals" id="dvMeals"></div>
+      <div class="dvlist" id="dvList"></div>
+      <div class="dvsum" id="dvSum"></div>
+    </div>
+    <p class="muted center">Desliza a los lados o toca un día del calendario para verlo.</p>
+  </section>
+
   <section id="secBrush" aria-labelledby="h-brush">
     <h2 id="h-brush">Cepillado</h2>
     <div class="brush" id="brush"></div>
@@ -283,7 +318,6 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
         <span><span class="mk l"></span>Limpieza</span>
         <span><span class="mk d"></span>Dentista</span>
       </div>
-      <div class="daydetail" id="dayDetail" hidden></div>
     </div>
   </section>
 
@@ -628,7 +662,7 @@ function applyRole(){
   $("#secRem").hidden = view;
   $("#secShare").hidden = !isOwner();
   $("#calBtn").hidden = !isOwner();
-  $("#dayDetail").hidden = !view;
+  $("#secDay").hidden = !view;
   $("#interval").disabled = !canWrite();
   $("#alNum").disabled = !canWrite();
   $("#alHint").hidden = !canWrite();
@@ -723,7 +757,7 @@ function renderMonth(){
     <div class="stat"><b>${possible ? Math.round(done/possible*100) : 0}%</b><span>cepillados del mes</span></div>
     <div class="stat"><b>${perfect}</b><span>días completos</span></div>
     <div class="stat"><b>${streak()}</b><span>racha de días 3/3</span></div>`;
-  if(D?.role === "ver") renderDetail();
+  if(D?.role === "ver") renderDayView();
 }
 function streak(){
   let s=0, d=today(); const full = k => MEALS.every(m => dayData(k)[m.k]);
@@ -731,13 +765,48 @@ function streak(){
   while(full(keyOf(d))){ s++; d=addDays(d,-1); }
   return s;
 }
-function renderDetail(){
-  const dd = dayData(sel), el = $("#dayDetail");
+function renderDayView(){
+  const t = keyOf(today()), d = parseKey(sel), dd = dayData(sel);
+  const diff = daysBetween(d, today());
+  const nice = `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+  $("#dvDate").textContent = nice;
+  $("#dvRel").textContent = diff===0 ? "Hoy" : diff===1 ? "Ayer" : diff>1 ? `Hace ${diff} días` : diff===-1 ? "Mañana" : `Dentro de ${-diff} días`;
+  $("#dvNext").disabled = false;
+  const future = sel > t, isToday = sel === t;
+  $("#dvMeals").innerHTML = MEALS.map(m => {
+    const ok = !!dd[m.k];
+    const cls = ok ? "ok" : (future || isToday) ? "" : "miss";
+    const txt = ok ? "Hecho" : future ? "—" : isToday ? "Aún no" : "No marcado";
+    const ic = ok ? "✓" : cls === "miss" ? "✕" : "·";
+    return `<div class="dvm ${cls}" role="img" aria-label="${m.lbl}: ${txt}"><div class="ic">${ic}</div><b>${m.lbl}</b><span>${txt}</span></div>`;
+  }).join("");
+  const n = alignerNumber(sel);
   const v = visits.filter(x => keyOf(x.date) === sel);
-  const item = (ok, t) => `<span class="${ok?"ok":"no"}">${ok?"✓":"·"} ${t}</span>`;
-  el.innerHTML = `<b>${fmtLong(parseKey(sel))}</b>` + MEALS.map(m => item(dd[m.k], m.lbl)).join("")
-    + (dd.cambio ? item(true,"Cambio de alineador") : "") + (dd.limpieza ? item(true,"Limpieza") : "")
-    + v.map(x => `<span class="ok" style="color:var(--gum)">● Dentista${x.allDay?"":` ${pad(x.date.getHours())}:${pad(x.date.getMinutes())}`}</span>`).join("");
+  const rows = [
+    `<div class="dvrow ${dd.cambio?"":"off"}"><span class="dot" style="background:var(--sun)"></span><b>Cambio de alineador</b><span>${dd.cambio ? (n ? `Puesto el nº ${n}` : "Sí") : "No"}</span></div>`,
+    `<div class="dvrow ${dd.limpieza?"":"off"}"><span class="dot" style="background:var(--muted)"></span><b>Limpieza de alineadores</b><span>${dd.limpieza ? "Sí" : "No"}</span></div>`,
+    ...v.map(x => `<div class="dvrow"><span class="dot" style="background:var(--gum);border-radius:50%"></span><b>${esc(x.title)}</b><span>${x.allDay ? "Todo el día" : `${pad(x.date.getHours())}:${pad(x.date.getMinutes())}`}</span></div>`)
+  ];
+  $("#dvList").innerHTML = rows.join("");
+  const c = MEALS.filter(m => dd[m.k]).length;
+  $("#dvSum").innerHTML = future ? "" : `<b>${c} de 3</b> cepillados${n && !future ? ` · alineador nº <b>${n}</b>` : ""}`;
+}
+function moveDay(delta){
+  sel = keyOf(addDays(parseKey(sel), delta));
+  syncMonth(); renderMonth();
+}
+$("#dvPrev").onclick = () => moveDay(-1);
+$("#dvNext").onclick = () => moveDay(1);
+{
+  let x0 = null, y0 = 0;
+  const el = $("#dayView");
+  el.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, {passive:true});
+  el.addEventListener("touchend", e => {
+    if(x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) moveDay(dx < 0 ? 1 : -1);
+  }, {passive:true});
 }
 
 function renderBanner(){
@@ -827,7 +896,7 @@ $("#mnext").onclick = () => { month = new Date(month.getFullYear(), month.getMon
 $("#grid").onclick = e => {
   const b=e.target.closest(".cell"); if(!b || b.disabled) return;
   sel = b.dataset.day;
-  if(D.role === "ver"){ renderMonth(); return; }
+  if(D.role === "ver"){ renderMonth(); $("#secDay").scrollIntoView({behavior:"smooth", block:"start"}); return; }
   if(sel > keyOf(today())){ sel = keyOf(today()); return; }
   renderAll(); window.scrollTo({top:0,behavior:"smooth"});
 };
