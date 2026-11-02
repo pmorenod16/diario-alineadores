@@ -220,6 +220,24 @@ async function diagnose(admin, db) {
     const ok = src.includes("Diario de Alineadores") && src.includes("match /codigos/") && src.includes("match /eventos/");
     console.log(ok ? `✓ Reglas de la app publicadas (${rs.createTime})` : "✗ Las reglas publicadas NO son las de la app: pega firestore.rules en Firestore → Reglas → Publicar.");
   } catch (e) { console.log(`? No he podido leer las reglas: ${e.message}`); }
+  // Estado de cada persona (sin datos personales: el registro de GitHub es público)
+  // y una notificación de prueba a cada móvil registrado.
+  const us = await db.collection("usuarios").get();
+  let i = 0;
+  for (const u of us.docs) {
+    const x = u.data(); i++;
+    const tokens = x.tokens || [];
+    const r = x.rem || {};
+    const horas = MEALS.map(m => `${m} ${r[m]?.on === false ? "off" : (r[m]?.time || DEFAULT_REM[m]?.time || "—")}`).join(", ");
+    console.log(`Persona ${i}: móviles registrados: ${tokens.length} · recordatorios: ${r.diarioId ? horas : "sin guardar"} · último enviado: ${JSON.stringify(x.lastSent || {})}`);
+    if (!tokens.length) continue;
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens,
+      data: { title: "🔔 Prueba del Diario de Alineadores", body: "Si ves esto, las notificaciones funcionan.", tipo: "aviso" },
+      webpush: { headers: { Urgency: "high", TTL: "600" } }
+    });
+    res.responses.forEach((rr, j) => console.log(`  móvil ${j + 1}: ${rr.success ? "prueba enviada ✓" : "✗ " + (rr.error?.code || rr.error?.message)}`));
+  }
 }
 
 async function runOnce(admin, db) {
