@@ -1,5 +1,5 @@
 // Service worker: la app funciona sin conexión y muestra los recordatorios.
-const CACHE = "diario-v6";
+const CACHE = "diario-v7";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -44,6 +44,8 @@ self.addEventListener("push", e => {
     tag: d.tipo === "aviso" ? "aviso-" + Date.now() : "cepillado-" + meal,
     renotify: true,
     requireInteraction: d.tipo !== "aviso",
+    silent: false,
+    vibrate: [200, 100, 200],
     actions: meal ? [{ action: "hecho", title: "✓ Ya me los he lavado" }] : [],
     data: { open: scope, mark: scope + "?" + query }
   }));
