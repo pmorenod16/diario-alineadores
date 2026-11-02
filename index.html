@@ -399,6 +399,10 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
         <button class="primary" id="remEnable" style="padding:9px 14px">Activar</button>
       </div>
       <div class="li">
+        <div class="txt"><b>Avisos recibidos en este móvil</b><span id="pushLog">Todavía no ha llegado ninguno.</span></div>
+        <button class="ghost" id="pushLogBtn" type="button">Ver</button>
+      </div>
+      <div class="li">
         <div class="txt"><b>Probar en este móvil</b><span id="testTxt">Muestra una notificación ahora y vuelve a registrar el móvil.</span></div>
         <button class="ghost" id="testPush" type="button">Probar</button>
       </div>
@@ -1217,6 +1221,20 @@ async function enablePush(){
   if(old && old !== token && auth.currentUser) F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {tokens: F.arrayRemove(old)}).catch(()=>{});
   return token;
 }
+async function renderPushLog(){
+  try{
+    const c = await caches.open("diario-log");
+    const r = await c.match("./__avisos");
+    const list = r ? await r.json() : [];
+    if(!list.length){ $("#pushLog").textContent = "Todavía no ha llegado ninguno a este móvil."; return; }
+    $("#pushLog").innerHTML = list.slice(0, 5).map(x => {
+      const t = new Date(x.at);
+      return `${fmtLong(t)} ${pad(t.getHours())}:${pad(t.getMinutes())} · ${esc(x.title)} · ${x.ok ? "mostrado ✓" : "✗ no se pudo mostrar"}`;
+    }).join("<br>");
+  }catch(e){ $("#pushLog").textContent = "No se puede leer en este navegador."; }
+}
+$("#pushLogBtn").onclick = renderPushLog;
+renderPushLog();
 $("#testPush").onclick = async () => {
   const b = $("#testPush"), t = $("#testTxt"); b.disabled = true;
   const steps = [];
