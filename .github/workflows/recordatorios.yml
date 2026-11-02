@@ -2,20 +2,21 @@ name: Recordatorios
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # cada 10 minutos (GitHub puede retrasarlo unos minutos)
+    - cron: "*/15 * * * *"   # GitHub suele retrasarlo; cada ejecución revisa cada 5 min durante 55 min
   workflow_dispatch: {}       # para probarlo a mano desde la pestaña Actions
   push:
     branches: [main]
     paths: ["scripts/**", ".github/workflows/recordatorios.yml"]
 
+# Solo una a la vez: la siguiente espera en cola y empieza cuando acaba la anterior.
 concurrency:
-  group: recordatorios
+  group: recordatorios-${{ github.event_name == 'schedule' && 'horario' || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   enviar:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 62
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,4 +29,5 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          LOOP_MINUTES: ${{ github.event_name == 'schedule' && '55' || '0' }}
         run: node recordatorios.mjs

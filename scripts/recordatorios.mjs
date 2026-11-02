@@ -191,7 +191,24 @@ async function main() {
   console.log(`Proyecto: ${sa.project_id} · cuenta: ${sa.client_email}`);
   admin.initializeApp({ credential: admin.credential.cert(sa) });
   const db = admin.firestore();
+
+  // GitHub lanza las tareas programadas con mucho retraso (a veces una vez por hora).
+  // Por eso, cuando viene del horario, el script se queda revisando cada 5 minutos
+  // durante LOOP_MINUTES; la siguiente ejecución toma el relevo al acabar.
+  const loopMin = Number(process.env.LOOP_MINUTES || 0);
+  const deadline = Date.now() + loopMin * 60 * 1000;
+  let fails = 0;
+  for (;;) {
+    try { await runOnce(admin, db); fails = 0; }
+    catch (e) { if (e?.code === 7 || e?.code === 5 || ++fails >= 3 || !loopMin) throw e; console.error("Fallo puntual, reintento:", e.message); }
+    if (Date.now() + 5 * 60 * 1000 > deadline) break;
+    await new Promise(r => setTimeout(r, 5 * 60 * 1000));
+  }
+}
+
+async function runOnce(admin, db) {
   const now = new Date();
+  console.log(`— ${now.toISOString()}`);
   const users = await db.collection("usuarios").get();
   let sent = 0;
 
