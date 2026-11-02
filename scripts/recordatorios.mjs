@@ -21,6 +21,15 @@ export function localParts(date, tz) {
   return { dia: `${p.year}-${p.month}-${p.day}`, mins: Number(p.hour) * 60 + Number(p.minute) };
 }
 
+/** Hora configurada de una comida ("HH:MM"), o null si está apagada. */
+export function remTime(rem, meal) {
+  const r = rem?.[meal] ?? DEFAULT_REM[meal];
+  return !r || r.on === false || typeof r.time !== "string" ? null : r.time;
+}
+
+/** Marca de "ya avisado": el día y la hora del aviso. Si cambias la hora, vuelve a avisar. */
+export const sentKey = (dia, time) => `${dia} ${time}`;
+
 /** Comidas cuyo aviso toca ahora. */
 export function dueMeals(rem, parts, lastSent = {}) {
   const out = [];
@@ -30,7 +39,7 @@ export function dueMeals(rem, parts, lastSent = {}) {
     const [h, m] = r.time.split(":").map(Number);
     if (Number.isNaN(h) || Number.isNaN(m)) continue;
     const at = h * 60 + m;
-    if (parts.mins >= at && parts.mins < at + WINDOW_MIN && lastSent[meal] !== parts.dia) out.push(meal);
+    if (parts.mins >= at && parts.mins < at + WINDOW_MIN && lastSent[meal] !== sentKey(parts.dia, r.time)) out.push(meal);
   }
   return out;
 }
@@ -270,7 +279,7 @@ async function runOnce(admin, db) {
     const dead = new Set();
 
     for (const meal of meals) {
-      lastSent[meal] = parts.dia;
+      lastSent[meal] = sentKey(parts.dia, remTime(rem, meal));
       if (done[meal]) continue;
       const res = await admin.messaging().sendEachForMulticast({
         tokens,
