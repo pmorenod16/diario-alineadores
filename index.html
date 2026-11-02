@@ -399,6 +399,10 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
         <button class="primary" id="remEnable" style="padding:9px 14px">Activar</button>
       </div>
       <div class="li">
+        <div class="txt"><b>Probar en este móvil</b><span id="testTxt">Muestra una notificación ahora y vuelve a registrar el móvil.</span></div>
+        <button class="ghost" id="testPush" type="button">Probar</button>
+      </div>
+      <div class="li">
         <div class="txt"><b>Después de desayunar</b><span>Solo avisa si aún no está marcado</span></div>
         <input type="time" id="t-desayuno" value="09:30" aria-label="Hora del aviso del desayuno">
         <label class="switch"><input type="checkbox" id="on-desayuno" checked aria-label="Aviso del desayuno activado"><span></span></label>
@@ -1208,9 +1212,30 @@ async function enablePush(){
   if(!(await M.isSupported())){ toast("Este navegador no admite notificaciones push."); return null; }
   const reg = swReg || await navigator.serviceWorker.ready;
   const token = await M.getToken(M.getMessaging(app), {vapidKey, serviceWorkerRegistration: reg});
-  try{ localStorage.setItem("fcmToken", token); }catch(e){}
+  let old = null; try{ old = localStorage.getItem("fcmToken"); localStorage.setItem("fcmToken", token); }catch(e){}
+  // si el móvil tenía otro registro antiguo, se quita para no enviar a un sitio que ya no existe
+  if(old && old !== token && auth.currentUser) F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {tokens: F.arrayRemove(old)}).catch(()=>{});
   return token;
 }
+$("#testPush").onclick = async () => {
+  const b = $("#testPush"), t = $("#testTxt"); b.disabled = true;
+  const steps = [];
+  try{
+    if(!("Notification" in window)) throw new Error("Este navegador no admite notificaciones.");
+    if(Notification.permission !== "granted"){ const p = await Notification.requestPermission(); if(p !== "granted") throw new Error("Las notificaciones están bloqueadas para esta app en los ajustes."); }
+    const reg = swReg || await navigator.serviceWorker.ready;
+    await reg.showNotification("🔔 Prueba en este móvil", {body:"Si ves esto, el móvil puede mostrar los avisos de la app.", icon:"icons/icon-192.png", badge:"icons/badge-96.png", tag:"prueba-local", renotify:true, vibrate:[200,100,200]});
+    steps.push("Notificación mostrada ✓");
+    const token = await enablePush();
+    if(!token) throw new Error("No se ha podido registrar el móvil.");
+    const data = {email: myEmail(), tokens: F.arrayUnion(token)};
+    await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
+    steps.push("móvil registrado de nuevo ✓");
+    t.textContent = steps.join(" · ") + ". Si no has visto la notificación, revisa los ajustes de notificaciones de Android para esta app.";
+  }catch(e){
+    t.textContent = (steps.length ? steps.join(" · ") + " · " : "") + "✗ " + (e.message || "No se ha podido completar.");
+  }finally{ b.disabled = false; renderPerm(); }
+};
 async function saveRem(withToken){
   const next = {};
   for(const k of REM_MEALS) next[k] = {time: $("#t-"+k).value || REM[k].time, on: $("#on-"+k).checked};
