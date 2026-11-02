@@ -1,0 +1,22 @@
+name: Mantener activo
+
+# GitHub pausa las tareas programadas de un repositorio sin cambios durante 60 días.
+# Esto hace un commit vacío cada mes para que los recordatorios no se paren nunca.
+on:
+  schedule:
+    - cron: "17 4 1 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  latido:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name "diario-bot"
+          git config user.email "diario-bot@users.noreply.github.com"
+          git commit --allow-empty -m "Mantener activos los recordatorios"
+          git push

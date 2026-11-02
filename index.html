@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Diario de Alineadores</title>
+<meta name="theme-color" content="#17806F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#F3F6F5; --surface:#FFFFFF; --ink:#12302E; --muted:#5B716E; --line:#DCE5E3;
+  --accent:#17806F; --accent-soft:#DDF0EB; --gum:#D9634F; --gum-soft:#FBE7E2; --sun:#E3A42B;
+  --display:"Bricolage Grotesque","Figtree",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0E1918; --surface:#152523; --ink:#E4F0EE; --muted:#93AAA6; --line:#253936;
+  --accent:#4CC2AE; --accent-soft:#183A35; --gum:#F08672; --gum-soft:#3A2420; --sun:#F0BC55; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.75rem;font-weight:800}
+h2{font-size:1.1rem;font-weight:600}
+p{margin:0}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:700}
+.primary:disabled{opacity:.5;cursor:default}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-size:.88rem;font-weight:600}
+.link{background:none;border:0;color:var(--accent);font-weight:600;padding:0;text-decoration:underline;text-underline-offset:3px}
+.danger{color:var(--gum)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:.85rem;font-weight:600}
+.field input,.field select{padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.note{font-size:.88rem;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:12px 14px}
+.err{color:var(--gum);font-size:.88rem;min-height:1.2em}
+.muted{color:var(--muted);font-size:.85rem}
+.center{text-align:center}
+/* auth */
+.hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:24px;text-align:center}
+.hero img{width:72px;height:72px;border-radius:20px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--line);border-radius:12px;padding:3px}
+.tabs button{border:0;background:transparent;border-radius:10px;padding:9px;font-weight:700;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink)}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.82rem}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:11px;font-weight:700}
+/* app */
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.daynav{display:flex;align-items:center;gap:6px}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;font-size:1.1rem}
+.iconbtn:disabled{opacity:.4}
+.datelabel{font-weight:600;min-width:7.5em;text-align:center;font-variant-numeric:tabular-nums}
+.rolebadge{display:inline-block;font-family:var(--body);font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);margin-left:6px;vertical-align:middle}
+.banner{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--gum-soft);border:1px solid var(--gum);border-radius:14px;padding:12px 14px;flex-wrap:wrap}
+.banner p{font-weight:600;min-width:0;flex:1 1 200px}
+.banner button{background:var(--gum);color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:700}
+section{display:flex;flex-direction:column;gap:10px}
+.sechead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.brush{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tap{border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:14px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:background .15s,border-color .15s,transform .1s}
+.tap:active{transform:scale(.97)}
+.tap svg{width:34px;height:34px}
+.tap .lbl{font-weight:700}
+.tap .st{font-size:.78rem;color:var(--muted)}
+.tap[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.tap[aria-pressed="true"] .st{color:var(--accent);font-weight:600}
+.tooth{fill:none;stroke:var(--muted);stroke-width:1.8;stroke-linejoin:round}
+.tap[aria-pressed="true"] .tooth{fill:var(--accent);stroke:var(--accent)}
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;text-align:left;width:100%}
+.row .txt{flex:1;min-width:0}
+.row .txt b{display:block}
+.row .txt span{font-size:.82rem;color:var(--muted)}
+.check{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none;color:transparent;font-weight:800}
+.row[aria-pressed="true"]{border-color:var(--accent)}
+.row[aria-pressed="true"] .check{background:var(--accent);border-color:var(--accent);color:#fff}
+.cycle{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.ring{width:84px;height:84px}
+.cycle .big{font-family:var(--display);font-size:1.6rem;font-weight:800;line-height:1.1}
+.cycle p{margin-top:2px;color:var(--muted);font-size:.88rem}
+.num{font-variant-numeric:tabular-nums}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:.85rem;color:var(--muted)}
+.inline input{width:4.2em;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:.7rem;text-align:center;color:var(--muted);font-weight:600;padding-bottom:2px}
+.cell{aspect-ratio:1;max-width:100%;border:0;background:transparent;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-variant-numeric:tabular-nums;font-size:.85rem;position:relative}
+.cell.out{opacity:.3}
+.cell.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cell.sel{background:var(--accent-soft)}
+.cell.full .n{color:var(--accent);font-weight:800}
+.cell:disabled{cursor:default}
+.dots{display:flex;gap:2px;height:5px}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--accent)}
+.marks{position:absolute;top:3px;right:4px;display:flex;gap:2px}
+.mk{width:6px;height:6px;border-radius:2px;display:inline-block}
+.mk.c{background:var(--sun)}
+.mk.l{background:var(--muted)}
+.mk.d{background:var(--gum);border-radius:50%}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.75rem;color:var(--muted);margin-top:10px}
+.legend span{display:flex;align-items:center;gap:5px}
+.daydetail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.88rem;display:flex;flex-wrap:wrap;gap:6px 14px}
+.daydetail b{width:100%}
+.daydetail .ok{color:var(--accent);font-weight:600}
+.daydetail .no{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.stat b{font-family:var(--display);font-size:1.35rem;display:block;font-variant-numeric:tabular-nums}
+.stat span{font-size:.76rem;color:var(--muted)}
+.visits{display:flex;flex-direction:column;gap:8px}
+.visit{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.visit.next{border-color:var(--gum);background:var(--gum-soft)}
+.visit.past{opacity:.65}
+.vdate{width:48px;text-align:center;flex:none}
+.vdate b{font-family:var(--display);font-size:1.35rem;display:block;line-height:1}
+.vdate span{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.visit .txt{min-width:0;flex:1}
+.visit .txt b{display:block;overflow-wrap:anywhere}
+.visit .txt span{font-size:.82rem;color:var(--muted)}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px 14px}
+.li{display:flex;align-items:center;gap:10px;padding:11px 0;flex-wrap:wrap}
+.li + .li{border-top:1px solid var(--line)}
+.li .txt{flex:1 1 160px;min-width:0}
+.li .txt b{display:block;overflow-wrap:anywhere}
+.li .txt span{font-size:.8rem;color:var(--muted)}
+.li select{padding:7px 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg)}
+.li input[type=time]{font-weight:700;font-variant-numeric:tabular-nums;padding:7px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg)}
+.addrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end}
+@media (max-width:420px){.addrow{grid-template-columns:1fr auto}.addrow .field:first-child{grid-column:1/-1}}
+.switch{position:relative;width:46px;height:28px;flex:none}
+.switch input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.switch span{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .15s;pointer-events:none}
+.switch span::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.switch input:checked + span{background:var(--accent)}
+.switch input:checked + span::after{transform:translateX(18px)}
+.switch input:focus-visible + span{outline:3px solid var(--accent);outline-offset:2px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:.9rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.status{font-size:.8rem;color:var(--muted);min-height:1em}
+.pickitem{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px}
+.pickitem b{display:block}
+.pickitem span{font-size:.82rem;color:var(--muted)}
+footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== Configuración pendiente ===== -->
+<div class="wrap" id="scrSetup" hidden>
+  <div class="hero"><img src="icons/icon-192.png" alt=""><h1>Falta configurar Firebase</h1></div>
+  <div class="note">Abre <b>config.js</b> y pega los datos de tu proyecto de Firebase, como explica el paso 2 de la guía (GUIA.md).</div>
+</div>
+
+<!-- ===== Cargando ===== -->
+<div class="wrap" id="scrLoading">
+  <div class="hero"><img src="icons/icon-192.png" alt=""><p class="muted">Cargando…</p></div>
+</div>
+
+<!-- ===== Entrar ===== -->
+<div class="wrap" id="scrAuth" hidden>
+  <div class="hero">
+    <img src="icons/icon-192.png" alt="">
+    <h1>Diario de Alineadores</h1>
+    <p class="muted">Cepillados, cambios y limpiezas de los alineadores, y las visitas al dentista.</p>
+  </div>
+  <div class="card">
+    <button class="primary installBtn" type="button" hidden>📲 Instalar la app en el móvil</button>
+    <button class="gbtn" id="googleBtn" type="button"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> Entrar con Google</button>
+    <div class="err" id="authErr"></div>
+    <p class="muted center" id="codeHint" hidden>Tienes un código de invitación: lo usaremos al entrar.</p>
+  </div>
+</div>
+
+<!-- ===== Sin diario: código de invitación o crear el mío ===== -->
+<div class="wrap" id="scrPick" hidden>
+  <div class="hero"><img src="icons/icon-192.png" alt=""><h1 id="pickTitle">¿Qué diario quieres abrir?</h1></div>
+  <div class="rows" id="pickList"></div>
+
+  <form class="card" id="codeCard" novalidate>
+    <p><b>¿Te han dado un código?</b> Escríbelo para pedir acceso a su diario.</p>
+    <div class="field"><label for="codeIn">Código de invitación</label>
+      <input id="codeIn" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC-123" maxlength="9"
+        style="font-size:1.4rem;font-weight:700;letter-spacing:.12em;text-align:center;text-transform:uppercase"></div>
+    <div class="err" id="codeErr"></div>
+    <button class="primary" id="codeBtn" type="submit">Pedir acceso</button>
+  </form>
+
+  <div class="card" id="waitCard" hidden>
+    <p><b>Solicitud enviada</b></p>
+    <p id="waitTxt">Cuando te acepte, el diario se abrirá solo aquí. Te puedes ir; te avisaremos.</p>
+    <button class="link danger" id="waitCancel">Cancelar la solicitud</button>
+  </div>
+
+  <div class="card" id="pickCreate">
+    <p><b>¿Llevas tú los alineadores?</b> Crea tu diario y luego invita a quien quieras con un código.</p>
+    <button class="ghost" id="createBtn">Crear mi diario</button>
+  </div>
+  <button class="link" id="pickOut">Cerrar sesión</button>
+</div>
+
+<!-- ===== App ===== -->
+<div class="wrap" id="scrApp" hidden>
+  <header>
+    <div style="min-width:0">
+      <div class="eyebrow" id="diarioName">Diario de alineadores</div>
+      <h1><span id="hello">Hoy</span><span class="rolebadge" id="roleBadge" hidden></span></h1>
+    </div>
+    <div class="daynav" id="dayNav">
+      <button class="iconbtn" id="prev" aria-label="Día anterior">‹</button>
+      <div class="datelabel" id="datelabel"></div>
+      <button class="iconbtn" id="next" aria-label="Día siguiente">›</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden>
+    <p id="bannerText"></p>
+    <button id="bannerBtn">Ya me los he lavado</button>
+  </div>
+
+  <section id="secBrush" aria-labelledby="h-brush">
+    <h2 id="h-brush">Cepillado</h2>
+    <div class="brush" id="brush"></div>
+  </section>
+
+  <section id="secAl" aria-labelledby="h-al">
+    <h2 id="h-al">Alineadores</h2>
+    <div class="rows" id="alrows"></div>
+  </section>
+
+  <section id="secCyc" aria-labelledby="h-cyc">
+    <h2 id="h-cyc">Ciclo actual</h2>
+    <div class="cycle">
+      <svg class="ring" viewBox="0 0 84 84" aria-hidden="true">
+        <circle cx="42" cy="42" r="34" fill="none" stroke="var(--line)" stroke-width="9"/>
+        <circle id="ringArc" cx="42" cy="42" r="34" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 214" transform="rotate(-90 42 42)"/>
+        <text id="ringTxt" x="42" y="47" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="17" fill="var(--ink)">–</text>
+      </svg>
+      <div style="min-width:0">
+        <div class="big" id="cycBig">Sin cambios aún</div>
+        <p id="cycSub">Marca tu primer cambio de alineador para empezar a contar.</p>
+        <div class="inline">
+          <label for="alNum">Llevo puesto el nº</label>
+          <input id="alNum" type="number" min="1" max="200" inputmode="numeric" placeholder="–">
+        </div>
+        <p class="muted" id="alHint" style="margin-top:6px">Si hoy toca cambio, márcalo antes de escribir el número.</p>
+        <div class="inline">
+          <label for="interval">Cambio cada</label>
+          <input id="interval" type="number" min="1" max="30" value="7" inputmode="numeric">
+          <span>días</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-month">
+    <div class="sechead">
+      <h2 id="h-month">Mes</h2>
+      <div class="daynav">
+        <button class="iconbtn" id="mprev" aria-label="Mes anterior">‹</button>
+        <div class="datelabel" id="monthlabel"></div>
+        <button class="iconbtn" id="mnext" aria-label="Mes siguiente">›</button>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="cal">
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><span class="dots"><i class="on"></i></span>Cepillado (desayuno · comida · cena)</span>
+        <span><span class="mk c"></span>Cambio</span>
+        <span><span class="mk l"></span>Limpieza</span>
+        <span><span class="mk d"></span>Dentista</span>
+      </div>
+      <div class="daydetail" id="dayDetail" hidden></div>
+    </div>
+  </section>
+
+  <section id="secDent" aria-labelledby="h-dent">
+    <div class="sechead">
+      <h2 id="h-dent">Visitas al dentista</h2>
+      <button class="ghost" id="calBtn" hidden>Actualizar desde Google Calendar</button>
+    </div>
+    <div class="visits" id="visits"></div>
+  </section>
+
+  <section id="secAvisos" aria-labelledby="h-avisos">
+    <h2 id="h-avisos">Avisos de lo que se marca</h2>
+    <div class="list">
+      <div class="li" id="avPermRow">
+        <div class="txt"><b>Notificaciones</b><span id="avPermTxt">Actívalas para enterarte aunque la app esté cerrada.</span></div>
+        <button class="primary" id="avEnable" style="padding:9px 14px">Activar</button>
+      </div>
+      <div class="li">
+        <div class="txt"><b>Avisarme al marcar algo</b><span>Cepillados, cambios y limpiezas de alineadores</span></div>
+        <label class="switch"><input type="checkbox" id="avOn" checked aria-label="Recibir avisos de lo que se marca"><span></span></label>
+      </div>
+      <div class="li"><div class="txt muted" id="avMsg">Los avisos pueden llegar con unos minutos de retraso.</div></div>
+    </div>
+  </section>
+
+  <section id="secRem" aria-labelledby="h-rem">
+    <h2 id="h-rem">Recordatorios en este móvil</h2>
+    <div class="list">
+      <div class="li" id="remPermRow">
+        <div class="txt"><b>Notificaciones</b><span id="remPermTxt">Actívalas para recibir los avisos aunque la app esté cerrada.</span></div>
+        <button class="primary" id="remEnable" style="padding:9px 14px">Activar</button>
+      </div>
+      <div class="li">
+        <div class="txt"><b>Después de desayunar</b><span>Solo avisa si aún no está marcado</span></div>
+        <input type="time" id="t-desayuno" value="09:30" aria-label="Hora del aviso del desayuno">
+        <label class="switch"><input type="checkbox" id="on-desayuno" checked aria-label="Aviso del desayuno activado"><span></span></label>
+      </div>
+      <div class="li">
+        <div class="txt"><b>Después de cenar</b><span>Solo avisa si aún no está marcado</span></div>
+        <input type="time" id="t-cena" value="23:00" aria-label="Hora del aviso de la cena">
+        <label class="switch"><input type="checkbox" id="on-cena" checked aria-label="Aviso de la cena activado"><span></span></label>
+      </div>
+      <div class="li">
+        <div class="txt muted" id="remMsg">Los avisos pueden llegar con unos minutos de retraso.</div>
+        <button class="ghost" id="remSave">Guardar horas</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="secShare" aria-labelledby="h-share">
+    <h2 id="h-share">Personas con acceso</h2>
+    <div class="card">
+      <p class="muted">Código de invitación</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <b id="inviteCode" style="font-family:var(--display);font-size:2rem;letter-spacing:.12em;font-variant-numeric:tabular-nums">······</b>
+        <button class="primary" id="inviteShare" type="button">Enviar invitación</button>
+      </div>
+      <p class="muted">Quien lo reciba instala la app, entra con Google y escribe el código. Tú decides si lo aceptas. <button class="link" id="inviteNew" type="button">Cambiar código</button></p>
+    </div>
+    <div id="reqBox" hidden>
+      <h2 style="font-size:1rem;margin-bottom:8px">Pendientes de aceptar</h2>
+      <div class="list" id="reqList"></div>
+    </div>
+    <div class="list" id="shareList"></div>
+    <p class="muted"><b>Solo ver:</b> ve el calendario con lo hecho, el nº de alineador y los días que quedan, y puede recibir avisos. <b>Editar:</b> ve toda la app y puede marcar y cambiar lo mismo que tú.</p>
+  </section>
+
+  <div class="status" id="status"></div>
+
+  <footer>
+    <span id="whoami"></span>
+    <span style="display:flex;gap:14px">
+      <button class="link installBtn" hidden>Instalar la app</button>
+      <button class="link" id="switchBtn" hidden>Cambiar de diario</button>
+      <button class="link" id="outBtn">Cerrar sesión</button>
+    </span>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script type="module">
+import { firebaseConfig, vapidKey, timeZone } from "./config.js";
+
+const $ = s => document.querySelector(s);
+const screens = ["scrSetup","scrLoading","scrAuth","scrPick","scrApp"];
+function show(id){ screens.forEach(s => $("#"+s).hidden = s !== id); window.scrollTo(0,0); }
+let toastT;
+function toast(t){ const el=$("#toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 2600); }
+function setStatus(t){ $("#status").textContent = t || ""; }
+
+// ---- service worker (offline + notificaciones) ----
+let swReg = null;
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js", {scope:"./"}).then(r => swReg = r).catch(()=>{});
+}
+
+if(!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PEGA_AQUI")){ show("scrSetup"); throw new Error("config"); }
+
+const V = "10.12.2";
+const [{ initializeApp }, A, F] = await Promise.all([
+  import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+  import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+  import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
+]);
+const app = initializeApp(firebaseConfig);
+const auth = A.getAuth(app);
+auth.languageCode = "es";
+let db;
+try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
+catch(e){ db = F.getFirestore(app); }
+
+// ================== utilidades de fechas ==================
+const MEALS = [{k:"desayuno",lbl:"Desayuno"},{k:"comida",lbl:"Comida"},{k:"cena",lbl:"Cena"}];
+const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DOW = ["lun","mar","mié","jue","vie","sáb","dom"];
+const KEYWORDS = /dentist|ortodon|odontol|invisalign|alineador|cl[ií]nica dental|dental/i;
+const pad = n => String(n).padStart(2,"0");
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const daysBetween = (a,b) => Math.round((parseKey(keyOf(b)) - parseKey(keyOf(a)))/86400000);
+const today = () => new Date();
+const fmtLong = d => `${["dom","lun","mar","mié","jue","vie","sáb"][d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// ================== instalar ==================
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; document.querySelectorAll(".installBtn").forEach(b => b.hidden = false); });
+window.addEventListener("appinstalled", () => { installEvt = null; document.querySelectorAll(".installBtn").forEach(b => b.hidden = true); toast("App instalada. Ya puedes abrirla desde el icono."); });
+document.addEventListener("click", async e => {
+  if(!e.target.closest(".installBtn") || !installEvt) return;
+  installEvt.prompt(); await installEvt.userChoice.catch(()=>{}); installEvt = null;
+  document.querySelectorAll(".installBtn").forEach(b => b.hidden = true);
+});
+
+// ================== código de invitación en el enlace (?codigo=ABC123) ==================
+const normCode = c => String(c||"").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+const fmtCode = c => c.length > 3 ? c.slice(0,3) + "-" + c.slice(3) : c;
+{
+  const c = normCode(new URLSearchParams(location.search).get("codigo"));
+  if(c.length === 6){ try{ localStorage.setItem("codigo", c); }catch(e){} history.replaceState(null, "", location.pathname); }
+}
+const savedCode = () => { try{ return localStorage.getItem("codigo") || ""; }catch(e){ return ""; } };
+$("#codeHint").hidden = !savedCode();
+
+// ================== autenticación (solo Google) ==================
+const authMsg = e => ({
+  "auth/network-request-failed":"No hay conexión. Comprueba internet y vuelve a probar.",
+  "auth/popup-closed-by-user":"Has cerrado la ventana de Google antes de terminar.",
+  "auth/too-many-requests":"Demasiados intentos. Espera un momento y vuelve a probar.",
+  "auth/unauthorized-domain":"Falta añadir esta dirección en Firebase (guía, paso 5).",
+  "auth/requires-recent-login":"Por seguridad, cierra sesión y vuelve a entrar."
+}[e?.code] || "No se ha podido entrar. Vuelve a probar.");
+$("#googleBtn").onclick = async () => {
+  $("#authErr").textContent = "";
+  const provider = new A.GoogleAuthProvider();
+  provider.setCustomParameters({prompt:"select_account"});
+  try{ await A.signInWithPopup(auth, provider); }
+  catch(err){
+    if(err?.code === "auth/popup-blocked" || err?.code === "auth/operation-not-supported-in-this-environment") return A.signInWithRedirect(auth, provider);
+    if(err?.code !== "auth/cancelled-popup-request") $("#authErr").textContent = authMsg(err);
+  }
+};
+A.getRedirectResult(auth).catch(err => { $("#authErr").textContent = authMsg(err); });
+const logout = async () => { stopDiario(); stopWait(); await A.signOut(auth); };
+$("#pickOut").onclick = logout; $("#outBtn").onclick = logout;
+
+const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
+
+A.onAuthStateChanged(auth, user => route(user));
+
+async function route(user){
+  if(!user){ stopDiario(); stopWait(); show("scrAuth"); return; }
+  show("scrLoading");
+  await loadChoices();
+}
+
+// ================== elegir diario / pedir acceso ==================
+let choices = [];
+let waitUnsub = null, myReq = null;
+function stopWait(){ if(waitUnsub){ try{ waitUnsub(); }catch(e){} waitUnsub = null; } }
+
+async function loadChoices(){
+  const uid = auth.currentUser.uid;
+  try{
+    const [own, acc, req] = await Promise.all([
+      F.getDocs(F.query(F.collection(db,"diarios"), F.where("ownerUid","==",uid))),
+      F.getDocs(F.query(F.collection(db,"accesos"), F.where("email","==",myEmail()))),
+      F.getDocs(F.query(F.collection(db,"solicitudes"), F.where("uid","==",uid)))
+    ]);
+    choices = [
+      ...own.docs.map(d => ({id:d.id, role:"owner", nombre:d.data().nombre || "Mi diario"})),
+      ...acc.docs.map(d => ({id:d.data().diarioId, role:d.data().role, nombre:d.data().diarioNombre || "Diario compartido"}))
+    ];
+    myReq = req.docs.length ? {id:req.docs[0].id, ...req.docs[0].data()} : null;
+    if(myReq && choices.some(c => c.id === myReq.diarioId)){ F.deleteDoc(F.doc(db,"solicitudes",myReq.id)).catch(()=>{}); myReq = null; }
+  }catch(e){
+    choices = []; myReq = null;
+    setStatus("No se han podido cargar tus diarios. Comprueba la conexión.");
+  }
+  // si llega con un código nuevo, lo usamos directamente
+  const code = savedCode();
+  if(code && !myReq){
+    try{ localStorage.removeItem("codigo"); }catch(e){}
+    renderPick();
+    $("#codeIn").value = fmtCode(code);
+    return requestAccess(code);
+  }
+  let last = null; try{ last = localStorage.getItem("diario"); }catch(e){}
+  const pending = new URLSearchParams(location.search).get("d");
+  const pick = choices.find(c => c.id === pending) || (choices.length===1 && !myReq ? choices[0] : choices.find(c => c.id === last));
+  if(pick) return openDiario(pick);
+  renderPick();
+}
+
+function renderPick(){
+  const hasOwn = choices.some(c => c.role==="owner");
+  $("#pickTitle").textContent = choices.length ? "¿Qué diario quieres abrir?" : `Hola, ${(auth.currentUser.displayName || "").split(" ")[0] || "bienvenido"}`;
+  $("#pickCreate").hidden = hasOwn || !!myReq;
+  $("#codeCard").hidden = !!myReq;
+  $("#waitCard").hidden = !myReq;
+  if(myReq) $("#waitTxt").textContent = `Has pedido acceso al ${myReq.diarioNombre || "diario"}. Cuando te acepte, se abrirá solo aquí.`;
+  const lbl = {owner:"Tuyo", editar:"Puedes editar", ver:"Solo ver"};
+  $("#pickList").innerHTML = choices.map((c,i) => `<button class="pickitem" data-i="${i}"><span style="min-width:0"><b>${esc(c.nombre)}</b><span>${lbl[c.role]}</span></span><span aria-hidden="true">›</span></button>`).join("");
+  show("scrPick");
+  if(myReq) watchAcceptance();
+}
+$("#pickList").onclick = e => { const b=e.target.closest(".pickitem"); if(b){ stopWait(); openDiario(choices[+b.dataset.i]); } };
+
+$("#codeIn").addEventListener("input", e => { const c = normCode(e.target.value); e.target.value = fmtCode(c); $("#codeErr").textContent = ""; });
+$("#codeCard").addEventListener("submit", e => { e.preventDefault(); requestAccess(normCode($("#codeIn").value)); });
+
+async function requestAccess(code){
+  $("#codeErr").textContent = "";
+  if(code.length !== 6){ $("#codeErr").textContent = "El código tiene 6 letras o números."; return; }
+  $("#codeBtn").disabled = true;
+  try{
+    const cs = await F.getDoc(F.doc(db,"codigos",code));
+    if(!cs.exists()){ $("#codeErr").textContent = "Ese código no existe o ya no es válido. Pide uno nuevo."; return; }
+    const c = cs.data(), u = auth.currentUser;
+    if(c.ownerUid === u.uid){ $("#codeErr").textContent = "Este es el código de tu propio diario."; return; }
+    if(choices.some(x => x.id === c.diarioId)){ const x = choices.find(x => x.id === c.diarioId); return openDiario(x); }
+    const id = `${c.diarioId}__${u.uid}`;
+    const data = {diarioId:c.diarioId, ownerUid:c.ownerUid, diarioNombre:c.diarioNombre || "", codigo:code,
+      uid:u.uid, email:myEmail(), nombre:u.displayName || "", foto:u.photoURL || "", notificado:false, at:F.serverTimestamp()};
+    await F.setDoc(F.doc(db,"solicitudes",id), data);
+    myReq = {id, ...data};
+    renderPick();
+  }catch(err){
+    $("#codeErr").textContent = err?.code === "permission-denied" ? "Ese código no es válido. Pide uno nuevo." : "No se ha podido enviar. Comprueba la conexión.";
+  }finally{ $("#codeBtn").disabled = false; }
+}
+
+function watchAcceptance(){
+  stopWait();
+  waitUnsub = F.onSnapshot(F.query(F.collection(db,"accesos"), F.where("email","==",myEmail())), snap => {
+    const hit = snap.docs.map(d => d.data()).find(a => a.diarioId === myReq?.diarioId);
+    if(!hit) return;
+    stopWait();
+    F.deleteDoc(F.doc(db,"solicitudes",myReq.id)).catch(()=>{});
+    const c = {id:hit.diarioId, role:hit.role, nombre:hit.diarioNombre || "Diario compartido"};
+    myReq = null; choices.push(c);
+    toast("¡Te han aceptado!");
+    openDiario(c);
+  }, () => {});
+}
+$("#waitCancel").onclick = async () => {
+  if(!myReq) return;
+  try{ await F.deleteDoc(F.doc(db,"solicitudes",myReq.id)); }catch(e){}
+  stopWait(); myReq = null; renderPick();
+};
+
+$("#createBtn").onclick = async () => {
+  const u = auth.currentUser;
+  $("#createBtn").disabled = true;
+  try{
+    const nombre = `Diario de ${(u.displayName || u.email.split("@")[0]).split(" ")[0]}`;
+    const ref = await F.addDoc(F.collection(db,"diarios"), {ownerUid:u.uid, ownerEmail:myEmail(), nombre, interval:7, visitas:[], codigo:"", creado:F.serverTimestamp()});
+    const c = {id:ref.id, role:"owner", nombre};
+    choices.push(c); openDiario(c);
+  }catch(e){ toast("No se ha podido crear el diario. Comprueba la conexión."); }
+  finally{ $("#createBtn").disabled = false; }
+};
+$("#switchBtn").onclick = () => { stopDiario(); try{ localStorage.removeItem("diario"); }catch(e){} renderPick(); };
+
+// ================== estado del diario ==================
+let D = null;            // {id, role, nombre}
+let diarioData = {};
+const days = {};
+let visits = [];
+let sel = keyOf(today());
+let month = new Date(today().getFullYear(), today().getMonth(), 1);
+let unsubs = [];
+let REM = {desayuno:{time:"09:30",on:true}, cena:{time:"23:00",on:true}};
+const isOwner = () => D?.role === "owner";
+const canWrite = () => D && (D.role === "owner" || D.role === "editar");
+
+function stopDiario(){ unsubs.forEach(u => { try{u()}catch(e){} }); unsubs = []; D = null; for(const k in days) delete days[k]; visits = []; }
+
+function openDiario(c){
+  stopDiario();
+  D = c;
+  try{ localStorage.setItem("diario", c.id); }catch(e){}
+  sel = keyOf(today()); month = new Date(today().getFullYear(), today().getMonth(), 1);
+  applyRole();
+  show("scrApp");
+  renderAll();
+  const dref = F.doc(db,"diarios",c.id);
+  unsubs.push(F.onSnapshot(dref, s => {
+    if(!s.exists()){ toast("Este diario ya no existe."); renderPick(); return; }
+    diarioData = s.data();
+    $("#diarioName").textContent = diarioData.nombre || "Diario de alineadores";
+    renderCode();
+    visits = (diarioData.visitas || []).map(x => ({title:String(x.title||"Dentista"), allDay:!!x.allDay, date: x.allDay ? parseKey(x.date) : new Date(x.date)})).filter(x => !isNaN(x.date));
+    renderAll(); renderVisits();
+  }, err => accessLost(err)));
+  unsubs.push(F.onSnapshot(F.collection(dref,"dias"), snap => {
+    for(const k in days) delete days[k];
+    snap.forEach(d => { days[d.id] = d.data(); });
+    renderAll();
+    handleMarkParam();
+  }, err => accessLost(err)));
+  if(isOwner()){
+    unsubs.push(F.onSnapshot(F.query(F.collection(db,"accesos"), F.where("diarioId","==",c.id), F.where("ownerUid","==",auth.currentUser.uid)), snap => renderShare(snap.docs.map(d => ({id:d.id, ...d.data()})))));
+    unsubs.push(F.onSnapshot(F.query(F.collection(db,"solicitudes"), F.where("diarioId","==",c.id), F.where("ownerUid","==",auth.currentUser.uid)), snap => renderRequests(snap.docs.map(d => ({id:d.id, ...d.data()})))));
+  }
+  if(canWrite()) loadRem();
+  if(!isOwner()) loadAvisos();
+}
+function accessLost(err){
+  if(err?.code === "permission-denied"){ toast("Ya no tienes acceso a este diario."); stopDiario(); loadChoices(); }
+  else setStatus("Sin conexión: verás los cambios cuando vuelva internet.");
+}
+
+function applyRole(){
+  const view = D.role === "ver";
+  for(const id of ["secBrush","secAl","dayNav","banner"]) $("#"+id).hidden = view;
+  $("#secAvisos").hidden = isOwner();
+  $("#secDent").hidden = view;
+  $("#secRem").hidden = view;
+  $("#secShare").hidden = !isOwner();
+  $("#calBtn").hidden = !isOwner();
+  $("#dayDetail").hidden = !view;
+  $("#interval").disabled = !canWrite();
+  $("#alNum").disabled = !canWrite();
+  $("#alHint").hidden = !canWrite();
+  const badge = $("#roleBadge");
+  badge.hidden = isOwner();
+  badge.textContent = view ? "Solo ver" : "Editor";
+  $("#hello").textContent = view ? "Calendario" : "Hoy";
+  $("#whoami").textContent = `${auth.currentUser.displayName || ""} · ${auth.currentUser.email}`;
+  $("#switchBtn").hidden = choices.length < 2 && isOwner();
+}
+
+// ================== render ==================
+const toothSvg = `<svg viewBox="0 0 34 34" aria-hidden="true"><path class="tooth" d="M10 6c3 0 4.5 1.5 7 1.5S21 6 24 6c4 0 6 3 5.5 7.5-.4 3.5-2 5.5-2.6 9-.6 3.8-1 7-3.2 7-2.3 0-2.2-6-3.7-6.8-.6-.3-1.4-.3-2 0C16.5 23.5 16.6 29.5 14.3 29.5c-2.2 0-2.6-3.2-3.2-7-.6-3.5-2.2-5.5-2.6-9C8 9 6 6 10 6z"/></svg>`;
+const dayData = k => days[k] || {};
+// Nº de alineador: el que se fijó a mano (diario.alineador = {num, tras}) + los cambios marcados después.
+// "tras" es el último día de cambio que ya estaba incluido en ese número ("" si ninguno).
+function alignerNumber(upTo){
+  const base = diarioData.alineador;
+  const changes = Object.keys(days).filter(x => days[x].cambio && x <= upTo);
+  if(!base || !base.num) return changes.length;
+  return Number(base.num) + changes.filter(x => x > (base.tras || "")).length;
+}
+
+function renderDay(){
+  if(!D || D.role === "ver") return;
+  const t = keyOf(today());
+  $("#datelabel").textContent = sel===t ? "Hoy" : fmtLong(parseKey(sel));
+  $("#hello").textContent = sel===t ? "Hoy" : fmtLong(parseKey(sel));
+  $("#next").disabled = sel >= t;
+  const dd = dayData(sel);
+  $("#brush").innerHTML = MEALS.map(m => `
+    <button class="tap" data-k="${m.k}" aria-pressed="${!!dd[m.k]}">${toothSvg}<span class="lbl">${m.lbl}</span><span class="st">${dd[m.k] ? "Hecho" : "Toca para marcar"}</span></button>`).join("");
+  const lastC = Object.keys(days).filter(x => days[x].cambio && x < sel).sort().pop();
+  const lastL = Object.keys(days).filter(x => days[x].limpieza && x < sel).sort().pop();
+  $("#alrows").innerHTML = `
+    <button class="row" data-k="cambio" aria-pressed="${!!dd.cambio}"><span class="check">✓</span>
+      <span class="txt"><b>Cambio de alineador</b><span>${dd.cambio ? "Nuevo juego puesto este día" : (lastC ? `Último: ${fmtLong(parseKey(lastC))}` : "Aún no has marcado ninguno")}</span></span></button>
+    <button class="row" data-k="limpieza" aria-pressed="${!!dd.limpieza}"><span class="check">✓</span>
+      <span class="txt"><b>Limpieza de alineadores</b><span>${dd.limpieza ? "Limpios" : (lastL ? `Última: ${fmtLong(parseKey(lastL))}` : "Aún no has marcado ninguna")}</span></span></button>`;
+}
+
+function renderCycle(){
+  const iv = Number(diarioData.interval) || 7;
+  if(document.activeElement !== $("#interval")) $("#interval").value = iv;
+  const t = keyOf(today());
+  const last = Object.keys(days).filter(x => days[x].cambio && x <= t).sort().pop();
+  const arc = $("#ringArc"), C = 2*Math.PI*34;
+  const count = alignerNumber(t);
+  if(document.activeElement !== $("#alNum")) $("#alNum").value = count || "";
+  if(!last && count){
+    arc.setAttribute("stroke-dasharray", `0 ${C}`); $("#ringTxt").textContent = "–";
+    $("#cycBig").textContent = `Alineador nº ${count}`;
+    $("#cycSub").textContent = canWrite() ? "Marca el día de tu próximo cambio para empezar a contar los días." : "Aún no se ha marcado ningún cambio.";
+    return;
+  }
+  if(!last){
+    arc.setAttribute("stroke-dasharray", `0 ${C}`); $("#ringTxt").textContent = "–";
+    $("#cycBig").textContent = "Sin cambios aún";
+    $("#cycSub").textContent = "Marca tu primer cambio de alineador para empezar a contar.";
+    return;
+  }
+  const day = daysBetween(parseKey(last), today()) + 1;
+  const left = iv - day + 1;
+  arc.setAttribute("stroke", left <= 0 ? "var(--gum)" : "var(--accent)");
+  arc.setAttribute("stroke-dasharray", `${Math.min(day/iv,1)*C} ${C}`);
+  $("#ringTxt").textContent = `${Math.min(day,99)}/${iv}`;
+  $("#cycBig").textContent = left > 1 ? `Faltan ${left-1} días` : left === 1 ? "Mañana toca cambio" : left === 0 ? "Hoy toca cambio" : `Cambio atrasado ${-left} d`;
+  $("#cycSub").innerHTML = `Día <span class="num">${day}</span> del alineador nº <span class="num">${count}</span>. Próximo cambio: ${fmtLong(addDays(parseKey(last), iv))}.`;
+}
+
+function renderMonth(){
+  $("#monthlabel").textContent = `${MONTHS[month.getMonth()]} ${month.getFullYear()}`;
+  const offset = (month.getDay()+6)%7, start = addDays(month, -offset), t = keyOf(today());
+  const vkeys = new Set(visits.map(v => keyOf(v.date)));
+  let html = DOW.map(d => `<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d = addDays(start,i), k = keyOf(d), dd = dayData(k);
+    if(i>=35 && d.getMonth()!==month.getMonth()) break;
+    const n = MEALS.filter(m => dd[m.k]).length;
+    const cls = ["cell", d.getMonth()!==month.getMonth()?"out":"", k===t?"today":"", k===sel?"sel":"", n===3?"full":""].join(" ");
+    html += `<button class="${cls}" data-day="${k}" ${k>t && !vkeys.has(k) ? "disabled":""} aria-label="${fmtLong(d)}: ${n} de 3 cepillados">
+      <span class="marks">${dd.cambio?'<span class="mk c"></span>':''}${dd.limpieza?'<span class="mk l"></span>':''}${vkeys.has(k)?'<span class="mk d"></span>':''}</span>
+      <span class="n">${d.getDate()}</span><span class="dots">${MEALS.map(m=>`<i class="${dd[m.k]?"on":""}"></i>`).join("")}</span></button>`;
+  }
+  $("#grid").innerHTML = html;
+  let possible=0, done=0, perfect=0;
+  for(let d=new Date(month); d.getMonth()===month.getMonth(); d=addDays(d,1)){
+    const k = keyOf(d); if(k>t) break;
+    const n = MEALS.filter(m=>dayData(k)[m.k]).length; possible+=3; done+=n; if(n===3) perfect++;
+  }
+  $("#stats").innerHTML = `
+    <div class="stat"><b>${possible ? Math.round(done/possible*100) : 0}%</b><span>cepillados del mes</span></div>
+    <div class="stat"><b>${perfect}</b><span>días completos</span></div>
+    <div class="stat"><b>${streak()}</b><span>racha de días 3/3</span></div>`;
+  if(D?.role === "ver") renderDetail();
+}
+function streak(){
+  let s=0, d=today(); const full = k => MEALS.every(m => dayData(k)[m.k]);
+  if(!full(keyOf(d))) d = addDays(d,-1);
+  while(full(keyOf(d))){ s++; d=addDays(d,-1); }
+  return s;
+}
+function renderDetail(){
+  const dd = dayData(sel), el = $("#dayDetail");
+  const v = visits.filter(x => keyOf(x.date) === sel);
+  const item = (ok, t) => `<span class="${ok?"ok":"no"}">${ok?"✓":"·"} ${t}</span>`;
+  el.innerHTML = `<b>${fmtLong(parseKey(sel))}</b>` + MEALS.map(m => item(dd[m.k], m.lbl)).join("")
+    + (dd.cambio ? item(true,"Cambio de alineador") : "") + (dd.limpieza ? item(true,"Limpieza") : "")
+    + v.map(x => `<span class="ok" style="color:var(--gum)">● Dentista${x.allDay?"":` ${pad(x.date.getHours())}:${pad(x.date.getMinutes())}`}</span>`).join("");
+}
+
+function renderBanner(){
+  const b = $("#banner");
+  if(!D || !canWrite()){ b.hidden = true; return; }
+  const now = today(), dd = dayData(keyOf(now)), mins = now.getHours()*60+now.getMinutes();
+  const at = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+  let which = null;
+  if(!dd.cena && mins >= at(REM.cena.time)) which = "cena";
+  else if(!dd.desayuno && mins >= at(REM.desayuno.time) && mins < Math.max(at(REM.desayuno.time)+360, 16*60)) which = "desayuno";
+  b.hidden = !which;
+  if(which){ $("#bannerText").textContent = `¿Te has lavado los dientes después de ${which==="cena"?"cenar":"desayunar"}?`; $("#bannerBtn").dataset.k = which; }
+}
+
+function renderVisits(){
+  const box = $("#visits");
+  if(!visits.length){
+    box.innerHTML = `<div class="note">${isOwner()
+      ? "Pulsa «Actualizar desde Google Calendar» para traer tus citas. Busco eventos con «dentista», «ortodoncista», «Invisalign» o «clínica dental» en el título."
+      : "Aún no hay citas del dentista en este diario."}</div>`;
+    return;
+  }
+  const now = today(), cut = addDays(now,-1);
+  const up = visits.filter(v => v.date >= cut).sort((a,b)=>a.date-b.date);
+  const past = visits.filter(v => v.date < cut).sort((a,b)=>b.date-a.date).slice(0,3);
+  const item = (v, cls) => {
+    const dd = daysBetween(now, v.date);
+    const when = dd===0 ? "Hoy" : dd===1 ? "Mañana" : dd>0 ? `En ${dd} días` : `Hace ${-dd} días`;
+    const hour = v.allDay ? "" : ` · ${pad(v.date.getHours())}:${pad(v.date.getMinutes())}`;
+    return `<div class="visit ${cls}"><div class="vdate"><b>${v.date.getDate()}</b><span>${MONTHS[v.date.getMonth()].slice(0,3)}</span></div>
+      <div class="txt"><b>${esc(v.title)}</b><span>${when}${hour}</span></div></div>`;
+  };
+  box.innerHTML = up.map((v,i)=>item(v, i===0?"next":"")).join("") + past.map(v=>item(v,"past")).join("");
+}
+
+function renderAll(){ if(!D) return; renderDay(); renderCycle(); renderMonth(); renderBanner(); }
+setInterval(renderBanner, 60000);
+
+// ================== escribir ==================
+async function setField(k, field, value){
+  if(!canWrite()) return;
+  const cur = {...dayData(k)};
+  cur[field] = value === undefined ? !cur[field] : value;
+  days[k] = cur; renderAll();
+  try{
+    await F.setDoc(F.doc(db,"diarios",D.id,"dias",k), {[field]: cur[field], fecha:k, por:auth.currentUser.uid, at:F.serverTimestamp()}, {merge:true});
+    setStatus("");
+    // para avisar a quien sigue el diario (lo envía el script de recordatorios)
+    if(cur[field] === true) F.addDoc(F.collection(db,"diarios",D.id,"eventos"),
+      {campo:field, dia:k, por:auth.currentUser.uid, porNombre:auth.currentUser.displayName || "", at:F.serverTimestamp()}).catch(()=>{});
+  }catch(e){
+    setStatus(e?.code==="permission-denied" ? "No tienes permiso para cambiar este diario." : "No se ha podido guardar. Revisa la conexión.");
+  }
+}
+$("#brush").onclick = e => { const b=e.target.closest(".tap"); if(b) setField(sel, b.dataset.k); };
+$("#alrows").onclick = e => { const b=e.target.closest(".row"); if(b) setField(sel, b.dataset.k); };
+$("#bannerBtn").onclick = e => setField(keyOf(today()), e.currentTarget.dataset.k, true);
+let ivT;
+$("#interval").addEventListener("input", e => {
+  if(!canWrite()) return;
+  const v = Math.max(1, Math.min(30, Number(e.target.value)||7));
+  diarioData = {...diarioData, interval:v}; renderCycle();
+  clearTimeout(ivT);
+  ivT = setTimeout(() => F.updateDoc(F.doc(db,"diarios",D.id), {interval:v}).catch(()=>setStatus("No se ha podido guardar el intervalo.")), 700);
+});
+
+let alT;
+$("#alNum").addEventListener("input", e => {
+  if(!canWrite()) return;
+  const n = Math.round(Number(e.target.value));
+  if(!n || n < 1 || n > 200) return;
+  const t = keyOf(today());
+  const tras = Object.keys(days).filter(x => days[x].cambio && x <= t).sort().pop() || "";
+  diarioData = {...diarioData, alineador:{num:n, tras}};
+  renderCycle();
+  clearTimeout(alT);
+  alT = setTimeout(() => F.updateDoc(F.doc(db,"diarios",D.id), {alineador:{num:n, tras}})
+    .then(() => toast(`Guardado: alineador nº ${n}.`))
+    .catch(()=>setStatus("No se ha podido guardar el nº de alineador.")), 900);
+});
+
+// navegación
+$("#prev").onclick = () => { sel = keyOf(addDays(parseKey(sel),-1)); syncMonth(); renderAll(); };
+$("#next").onclick = () => { const n=keyOf(addDays(parseKey(sel),1)); if(n<=keyOf(today())){ sel=n; syncMonth(); renderAll(); } };
+$("#mprev").onclick = () => { month = new Date(month.getFullYear(), month.getMonth()-1, 1); renderMonth(); };
+$("#mnext").onclick = () => { month = new Date(month.getFullYear(), month.getMonth()+1, 1); renderMonth(); };
+$("#grid").onclick = e => {
+  const b=e.target.closest(".cell"); if(!b || b.disabled) return;
+  sel = b.dataset.day;
+  if(D.role === "ver"){ renderMonth(); return; }
+  if(sel > keyOf(today())){ sel = keyOf(today()); return; }
+  renderAll(); window.scrollTo({top:0,behavior:"smooth"});
+};
+function syncMonth(){ const d=parseKey(sel); month = new Date(d.getFullYear(), d.getMonth(), 1); }
+
+// marcar desde la notificación: ?marcar=desayuno&dia=YYYY-MM-DD&d=<diario>
+let markHandled = false;
+function handleMarkParam(){
+  if(markHandled || !D) return;
+  const q = new URLSearchParams(location.search);
+  const m = q.get("marcar"), dia = q.get("dia");
+  if(!m) return;
+  markHandled = true;
+  history.replaceState(null, "", location.pathname);
+  if(!["desayuno","comida","cena"].includes(m) || !/^\d{4}-\d{2}-\d{2}$/.test(dia||"")) return;
+  if(q.get("d") && q.get("d") !== D.id) return;
+  if(!canWrite()){ toast("Solo puedes ver este diario."); return; }
+  setField(dia, m, true);
+  toast(`Marcado: cepillado después de ${m==="cena"?"cenar":m==="comida"?"comer":"desayunar"} ✓`);
+}
+
+// ================== compartir ==================
+function renderShare(list){
+  const box = $("#shareList");
+  if(!list.length){ box.innerHTML = `<div class="li"><div class="txt muted">Todavía nadie tiene acceso. Envía tu código de invitación.</div></div>`; return; }
+  box.innerHTML = list.sort((a,b)=>(a.nombre||a.email).localeCompare(b.nombre||b.email)).map(a => `
+    <div class="li" data-id="${esc(a.id)}">
+      <div class="txt"><b>${esc(a.nombre || a.email)}</b><span>${esc(a.email)} · ${a.role==="ver" ? "solo ver" : "puede editar"}</span></div>
+      <select aria-label="Permiso de ${esc(a.email)}" data-role><option value="ver" ${a.role==="ver"?"selected":""}>Solo ver</option><option value="editar" ${a.role==="editar"?"selected":""}>Editar</option></select>
+      <button class="link danger" data-del>Quitar</button>
+    </div>`).join("");
+}
+$("#shareList").addEventListener("change", async e => {
+  const row = e.target.closest(".li"); if(!row || !e.target.matches("[data-role]")) return;
+  try{ await F.updateDoc(F.doc(db,"accesos",row.dataset.id), {role:e.target.value}); toast("Permiso actualizado."); }
+  catch(err){ toast("No se ha podido cambiar el permiso."); }
+});
+let confirmDel = null;
+$("#shareList").addEventListener("click", async e => {
+  const btn = e.target.closest("[data-del]"); if(!btn) return;
+  const row = btn.closest(".li");
+  if(confirmDel !== row.dataset.id){ confirmDel = row.dataset.id; btn.textContent = "¿Seguro? Toca otra vez"; setTimeout(()=>{ if(confirmDel===row.dataset.id){ confirmDel=null; btn.textContent="Quitar"; } }, 4000); return; }
+  confirmDel = null;
+  try{ await F.deleteDoc(F.doc(db,"accesos",row.dataset.id)); toast("Acceso quitado."); }
+  catch(err){ toast("No se ha podido quitar el acceso."); }
+});
+// código de invitación
+const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const newCode = () => Array.from(crypto.getRandomValues(new Uint32Array(6)), n => ALPHA[n % ALPHA.length]).join("");
+async function rotateCode(){
+  const old = diarioData.codigo;
+  for(let i=0;i<5;i++){
+    const code = newCode();
+    try{
+      await F.setDoc(F.doc(db,"codigos",code), {diarioId:D.id, ownerUid:auth.currentUser.uid, diarioNombre:diarioData.nombre || "", creado:F.serverTimestamp()});
+      await F.updateDoc(F.doc(db,"diarios",D.id), {codigo:code});
+      if(old) F.deleteDoc(F.doc(db,"codigos",old)).catch(()=>{});
+      return code;
+    }catch(e){ if(e?.code !== "permission-denied") throw e; } // código ya usado: probamos otro
+  }
+  throw new Error("code");
+}
+let ensuring = false;
+async function ensureCode(){
+  if(!isOwner() || diarioData.codigo || ensuring || diarioData.ownerUid === undefined) return;
+  ensuring = true;
+  try{ await rotateCode(); }catch(e){} finally{ ensuring = false; }
+}
+function renderCode(){
+  if(!isOwner()) return;
+  $("#inviteCode").textContent = diarioData.codigo ? fmtCode(diarioData.codigo) : "······";
+  ensureCode();
+}
+const inviteLink = () => `${location.origin}${location.pathname}?codigo=${diarioData.codigo}`;
+$("#inviteShare").onclick = async () => {
+  if(!diarioData.codigo) return;
+  const text = `Te invito a ver mi Diario de Alineadores. Abre este enlace, instala la app y entra con Google. Tu código es ${fmtCode(diarioData.codigo)}.`;
+  try{
+    if(navigator.share){ await navigator.share({title:"Diario de Alineadores", text, url:inviteLink()}); return; }
+  }catch(e){ if(e?.name === "AbortError") return; }
+  try{ await navigator.clipboard.writeText(`${text}\n${inviteLink()}`); toast("Invitación copiada. Pégala en WhatsApp o donde quieras."); }
+  catch(e){ toast(`Código: ${fmtCode(diarioData.codigo)} · ${inviteLink()}`); }
+};
+let confirmNew = false;
+$("#inviteNew").onclick = async () => {
+  if(!confirmNew){ confirmNew = true; $("#inviteNew").textContent = "El código actual dejará de servir. ¿Seguro?"; setTimeout(()=>{ confirmNew=false; $("#inviteNew").textContent="Cambiar código"; }, 4000); return; }
+  confirmNew = false; $("#inviteNew").textContent = "Cambiar código";
+  try{ await rotateCode(); toast("Código nuevo creado. El anterior ya no sirve."); }
+  catch(e){ toast("No se ha podido cambiar el código."); }
+};
+
+// solicitudes pendientes
+function renderRequests(list){
+  $("#reqBox").hidden = !list.length;
+  $("#reqList").innerHTML = list.map(r => `
+    <div class="li" data-id="${esc(r.id)}">
+      <div class="txt"><b>${esc(r.nombre || r.email)}</b><span>${esc(r.email)}</span></div>
+      <select aria-label="Permiso para ${esc(r.email)}" data-req-role><option value="ver">Solo ver</option><option value="editar">Editar</option></select>
+      <button class="primary" style="padding:8px 12px" data-accept>Aceptar</button>
+      <button class="link danger" data-reject>Rechazar</button>
+    </div>`).join("");
+  reqCache = Object.fromEntries(list.map(r => [r.id, r]));
+}
+let reqCache = {};
+$("#reqList").addEventListener("click", async e => {
+  const row = e.target.closest(".li"); if(!row) return;
+  const r = reqCache[row.dataset.id]; if(!r) return;
+  if(e.target.closest("[data-accept]")){
+    const role = row.querySelector("[data-req-role]").value;
+    try{
+      await F.setDoc(F.doc(db,"accesos",`${D.id}__${r.email}`), {diarioId:D.id, diarioNombre:diarioData.nombre||"", email:r.email, nombre:r.nombre||"", role, ownerUid:auth.currentUser.uid, ownerEmail:myEmail(), creado:F.serverTimestamp()});
+      await F.deleteDoc(F.doc(db,"solicitudes",r.id));
+      toast(`${r.nombre || r.email} ya tiene acceso.`);
+    }catch(err){ toast("No se ha podido aceptar. Comprueba la conexión."); }
+  } else if(e.target.closest("[data-reject]")){
+    try{ await F.deleteDoc(F.doc(db,"solicitudes",r.id)); toast("Solicitud rechazada."); }
+    catch(err){ toast("No se ha podido rechazar."); }
+  }
+});
+
+// ================== Google Calendar ==================
+$("#calBtn").onclick = async () => {
+  const btn = $("#calBtn"); btn.disabled = true; btn.textContent = "Leyendo calendario…";
+  try{
+    const provider = new A.GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
+    const u = auth.currentUser;
+    const hasGoogle = u.providerData.some(p => p.providerId === "google.com");
+    const res = hasGoogle ? await A.reauthenticateWithPopup(u, provider) : await A.linkWithPopup(u, provider);
+    const token = A.GoogleAuthProvider.credentialFromResult(res)?.accessToken;
+    if(!token) throw new Error("token");
+    const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+    url.search = new URLSearchParams({timeMin:addDays(today(),-120).toISOString(), timeMax:addDays(today(),365).toISOString(), singleEvents:"true", orderBy:"startTime", maxResults:"2500"});
+    const r = await fetch(url, {headers:{Authorization:`Bearer ${token}`}});
+    if(!r.ok) throw Object.assign(new Error("api"), {status:r.status});
+    const j = await r.json();
+    const items = (j.items||[]).filter(ev => KEYWORDS.test(ev.summary||"") || KEYWORDS.test(ev.description||"") || KEYWORDS.test(ev.location||""))
+      .map(ev => ({title: ev.summary || "Dentista", allDay: !!ev.start?.date, date: ev.start?.date || ev.start?.dateTime})).filter(x => x.date);
+    await F.updateDoc(F.doc(db,"diarios",D.id), {visitas: items, visitasAt: F.serverTimestamp()});
+    toast(items.length ? `${items.length} cita${items.length>1?"s":""} del dentista encontradas.` : "No he encontrado citas del dentista.");
+  }catch(err){
+    if(err?.status === 403) toast("Falta activar la API de Google Calendar en tu proyecto (guía, paso 6).");
+    else if(err?.code) toast(authMsg(err));
+    else toast("No se ha podido leer el calendario. Vuelve a probar.");
+  }finally{ btn.disabled = false; btn.textContent = "Actualizar desde Google Calendar"; }
+};
+
+// ================== recordatorios ==================
+async function loadRem(){
+  try{
+    const s = await F.getDoc(F.doc(db,"usuarios",auth.currentUser.uid));
+    const r = s.exists() ? s.data().rem : null;
+    if(r && r.diarioId === D.id){ REM = {desayuno:{...REM.desayuno, ...r.desayuno}, cena:{...REM.cena, ...r.cena}}; }
+  }catch(e){}
+  for(const k of ["desayuno","cena"]){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
+  renderPerm(); renderBanner();
+}
+function renderPerm(){
+  const p = ("Notification" in window) ? Notification.permission : "unsupported";
+  $("#remEnable").hidden = p === "granted" && hasToken();
+  $("#remPermTxt").textContent =
+    p === "unsupported" ? "Este navegador no admite notificaciones. Instala la app en la pantalla de inicio (guía, paso 8)." :
+    p === "denied" ? "Has bloqueado las notificaciones. Actívalas en los ajustes del navegador para esta app." :
+    (p === "granted" && hasToken()) ? "Activadas en este móvil." :
+    "Actívalas para recibir los avisos aunque la app esté cerrada.";
+}
+const hasToken = () => { try{ return !!localStorage.getItem("fcmToken"); }catch(e){ return false; } };
+async function enablePush(){
+  if(!("Notification" in window)){ renderPerm(); return null; }
+  const p = await Notification.requestPermission();
+  if(p !== "granted"){ renderPerm(); return null; }
+  const M = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-messaging.js`);
+  if(!(await M.isSupported())){ toast("Este navegador no admite notificaciones push."); return null; }
+  const reg = swReg || await navigator.serviceWorker.ready;
+  const token = await M.getToken(M.getMessaging(app), {vapidKey, serviceWorkerRegistration: reg});
+  try{ localStorage.setItem("fcmToken", token); }catch(e){}
+  return token;
+}
+async function saveRem(withToken){
+  const next = {};
+  for(const k of ["desayuno","cena"]) next[k] = {time: $("#t-"+k).value || REM[k].time, on: $("#on-"+k).checked};
+  REM = next;
+  const data = {email: myEmail(), nombre: auth.currentUser.displayName || "",
+    rem: {diarioId: D.id, tz: timeZone, desayuno: next.desayuno, cena: next.cena}};
+  if(withToken) data.tokens = F.arrayUnion(withToken);
+  await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
+  renderBanner();
+}
+$("#remEnable").onclick = async () => {
+  const b = $("#remEnable"); b.disabled = true;
+  try{
+    const token = await enablePush();
+    if(token){ await saveRem(token); toast("Notificaciones activadas en este móvil."); }
+  }catch(e){ toast("No se han podido activar. Revisa la guía, paso 3 (clave de notificaciones)."); }
+  finally{ b.disabled = false; renderPerm(); }
+};
+// ================== avisos de lo que se marca (para quien sigue el diario) ==================
+async function loadAvisos(){
+  let on = D.role === "ver";
+  try{
+    const s = await F.getDoc(F.doc(db,"usuarios",auth.currentUser.uid));
+    const a = s.exists() ? s.data().avisos : null;
+    if(a && a.diarioId === D.id) on = a.on !== false;
+  }catch(e){}
+  $("#avOn").checked = on;
+  renderAvPerm();
+}
+function renderAvPerm(){
+  const p = ("Notification" in window) ? Notification.permission : "unsupported";
+  const ok = p === "granted" && hasToken();
+  $("#avEnable").hidden = ok;
+  $("#avPermTxt").textContent =
+    p === "unsupported" ? "Este navegador no admite notificaciones. Instala la app en la pantalla de inicio." :
+    p === "denied" ? "Has bloqueado las notificaciones. Actívalas en los ajustes del navegador para esta app." :
+    ok ? "Activadas en este móvil." : "Actívalas para enterarte aunque la app esté cerrada.";
+}
+async function saveAvisos(token){
+  const data = {email: myEmail(), nombre: auth.currentUser.displayName || "", avisos:{diarioId:D.id, on:$("#avOn").checked}};
+  if(token) data.tokens = F.arrayUnion(token);
+  await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
+}
+$("#avEnable").onclick = async () => {
+  const b = $("#avEnable"); b.disabled = true;
+  try{
+    const token = await enablePush();
+    if(token){ await saveAvisos(token); toast("Notificaciones activadas en este móvil."); }
+  }catch(e){ toast("No se han podido activar las notificaciones."); }
+  finally{ b.disabled = false; renderAvPerm(); }
+};
+$("#avOn").onchange = async () => {
+  try{
+    let token = null; try{ token = localStorage.getItem("fcmToken"); }catch(e){}
+    await saveAvisos(token);
+    $("#avMsg").textContent = $("#avOn").checked ? "Te avisaremos cuando se marque algo." : "No recibirás avisos de este diario.";
+    if($("#avOn").checked && !hasToken()) toast("Pulsa «Activar» para recibir los avisos en este móvil.");
+  }catch(e){ $("#avMsg").textContent = "No se ha podido guardar. Revisa la conexión."; }
+};
+
+$("#remSave").onclick = async () => {
+  try{
+    let token = null;
+    try{ token = localStorage.getItem("fcmToken"); }catch(e){}
+    await saveRem(token);
+    const f = k => REM[k].on ? REM[k].time : "desactivado";
+    $("#remMsg").textContent = `Guardado. Desayuno: ${f("desayuno")} · Cena: ${f("cena")}.`;
+    if(!hasToken()) toast("Guardado. Activa las notificaciones para recibir los avisos.");
+  }catch(e){ $("#remMsg").textContent = "No se ha podido guardar. Revisa la conexión."; }
+};
+</script>
+</body>
+</html>

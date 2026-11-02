@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// Diario de Alineadores — reglas de seguridad
+//
+// diarios/{d}                 el diario de una persona (dueño = ownerUid)
+// diarios/{d}/dias/{fecha}    lo marcado cada día (cepillados, cambio, limpieza)
+// accesos/{d}__{email}        a quién ha aceptado el dueño y con qué permiso ("ver" o "editar")
+// codigos/{CODIGO}            código de invitación de un diario (6 letras/números)
+// solicitudes/{d}__{uid}      alguien ha escrito el código y espera a que el dueño le acepte
+// diarios/{d}/eventos/{e}     marcas recientes, para avisar a quien sigue el diario
+// usuarios/{uid}              ajustes privados de cada persona (recordatorios, avisos, móviles)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+
+    function diario(d) { return get(/databases/$(database)/documents/diarios/$(d)); }
+    function isOwner(d) { return signedIn() && diario(d).data.ownerUid == request.auth.uid; }
+
+    function accesoPath(d) { return /databases/$(database)/documents/accesos/$(d + '__' + myEmail()); }
+    function role(d) {
+      return verified() && exists(accesoPath(d)) ? get(accesoPath(d)).data.role : '';
+    }
+    function canRead(d) { return isOwner(d) || role(d) in ['ver', 'editar']; }
+    function canWrite(d) { return isOwner(d) || role(d) == 'editar'; }
+
+    match /diarios/{d} {
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || role(d) in ['ver', 'editar']);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      // el dueño cambia todo; quien puede editar solo el intervalo de cambio
+      allow update: if signedIn() && (
+        (resource.data.ownerUid == request.auth.uid && request.resource.data.ownerUid == request.auth.uid)
+        || (role(d) == 'editar' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['interval', 'alineador']))
+      );
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /dias/{fecha} {
+        allow read: if canRead(d);
+        allow write: if canWrite(d)
+          && (request.resource == null || request.resource.data.keys().hasOnly(['desayuno', 'comida', 'cena', 'cambio', 'limpieza', 'fecha', 'por', 'at']));
+      }
+
+      // cada marca deja un evento para avisar a quien sigue el diario; solo lo lee y borra el script
+      match /eventos/{e} {
+        allow create: if canWrite(d)
+          && request.resource.data.keys().hasOnly(['campo', 'dia', 'por', 'porNombre', 'at'])
+          && request.resource.data.por == request.auth.uid
+          && request.resource.data.campo in ['desayuno', 'comida', 'cena', 'cambio', 'limpieza'];
+      }
+    }
+
+    match /accesos/{id} {
+      // el dueño del diario gestiona los accesos; cada persona puede ver los suyos
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid
+                                    || (verified() && resource.data.email == myEmail()));
+      allow create: if isOwner(request.resource.data.diarioId)
+        && request.resource.data.ownerUid == request.auth.uid
+        && id == request.resource.data.diarioId + '__' + request.resource.data.email
+        && request.resource.data.role in ['ver', 'editar']
+        && request.resource.data.email == request.resource.data.email.lower();
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'diarioNombre'])
+        && request.resource.data.role in ['ver', 'editar'];
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /codigos/{c} {
+      // se puede comprobar un código concreto, pero no listarlos
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if isOwner(request.resource.data.diarioId)
+        && request.resource.data.ownerUid == request.auth.uid
+        && c.size() == 6;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /solicitudes/{id} {
+      function codigo() { return get(/databases/$(database)/documents/codigos/$(request.resource.data.codigo)).data; }
+      allow create: if verified()
+        && id == request.resource.data.diarioId + '__' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == myEmail()
+        && request.resource.data.notificado == false
+        && codigo().diarioId == request.resource.data.diarioId
+        && codigo().ownerUid == request.resource.data.ownerUid
+        && request.resource.data.keys().hasOnly(['diarioId', 'ownerUid', 'diarioNombre', 'codigo', 'uid', 'email', 'nombre', 'foto', 'notificado', 'at']);
+      allow read, delete: if signedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.uid == request.auth.uid);
+    }
+
+    match /usuarios/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
