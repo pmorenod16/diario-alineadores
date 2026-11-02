@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "*/10 * * * *"   # cada 10 minutos (GitHub puede retrasarlo unos minutos)
   workflow_dispatch: {}       # para probarlo a mano desde la pestaña Actions
+  push:
+    branches: [main]
+    paths: ["scripts/**", ".github/workflows/recordatorios.yml"]
 
 concurrency:
   group: recordatorios

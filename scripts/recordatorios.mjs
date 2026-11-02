@@ -185,7 +185,11 @@ async function main() {
   const { default: admin } = await import("firebase-admin");
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) { console.log("Aún no está el secreto FIREBASE_SERVICE_ACCOUNT (guía, paso 6). No hago nada."); return; }
-  admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+  let sa;
+  try { sa = JSON.parse(raw); }
+  catch { throw new Error("El secreto FIREBASE_SERVICE_ACCOUNT no es un JSON válido: vuelve a pegar el archivo .json entero, desde { hasta }."); }
+  console.log(`Proyecto: ${sa.project_id} · cuenta: ${sa.client_email}`);
+  admin.initializeApp({ credential: admin.credential.cert(sa) });
   const db = admin.firestore();
   const now = new Date();
   const users = await db.collection("usuarios").get();
@@ -247,5 +251,9 @@ async function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(e => { console.error(e); process.exit(1); });
+  main().catch(e => {
+    if (e?.code === 7) console.error("⚠️ PERMISSION_DENIED: la clave no tiene permiso en este proyecto. Comprueba que la generaste en Firebase → Configuración del proyecto → Cuentas de servicio del proyecto «diario-alineadores».");
+    if (e?.code === 5) console.error("⚠️ NOT_FOUND: no existe la base de datos (default) de Firestore en este proyecto.");
+    console.error(e); process.exit(1);
+  });
 }
