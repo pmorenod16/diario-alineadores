@@ -205,7 +205,7 @@ async function main() {
   // Por eso, cuando viene del horario, el script se queda revisando cada 5 minutos
   // durante LOOP_MINUTES; la siguiente ejecución toma el relevo al acabar.
   const loopMin = Number(process.env.LOOP_MINUTES || 0);
-  if (!loopMin) await diagnose(admin, db);
+  if (process.env.DIAGNOSE === "1") await diagnose(admin, db);
   const deadline = Date.now() + loopMin * 60 * 1000;
   let fails = 0;
   for (;;) {
@@ -239,13 +239,6 @@ async function diagnose(admin, db) {
     const r = x.rem || {};
     const horas = MEALS.map(m => `${m} ${r[m]?.on === false ? "off" : (r[m]?.time || DEFAULT_REM[m]?.time || "—")}`).join(", ");
     console.log(`Persona ${i}: móviles registrados: ${tokens.length} · recordatorios: ${r.diarioId ? horas : "sin guardar"} · último enviado: ${JSON.stringify(x.lastSent || {})}`);
-    if (!tokens.length) continue;
-    const res = await admin.messaging().sendEachForMulticast({
-      tokens,
-      data: { title: "🔔 Prueba del Diario de Alineadores", body: `Si ves esto, las notificaciones funcionan (enviada desde internet a las ${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date())}).`, tipo: "aviso" },
-      webpush: { headers: { Urgency: "high", TTL: "600" } }
-    });
-    res.responses.forEach((rr, j) => console.log(`  móvil ${j + 1}: ${rr.success ? "prueba enviada ✓" : "✗ " + (rr.error?.code || rr.error?.message)}`));
   }
 }
 

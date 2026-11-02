@@ -30,4 +30,5 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           LOOP_MINUTES: ${{ github.event_name == 'schedule' && '55' || '0' }}
+          DIAGNOSE: ${{ github.event_name == 'push' && '1' || '0' }}
         run: node recordatorios.mjs
