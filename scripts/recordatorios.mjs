@@ -1,4 +1,4 @@
-// Lo ejecuta GitHub Actions cada 10 minutos y hace dos cosas:
+// Lo ejecuta GitHub Actions (revisa cada 5 minutos) y hace cuatro cosas:
 // 1. Recordatorios: para cada persona con recordatorios, si ya ha pasado su hora (y no hace
 //    más de 90 min), todavía no se ha avisado hoy y el cepillado no está marcado, la avisa.
 // 2. Avisos a quien sigue un diario: junta lo que se ha marcado desde la última vez
