@@ -73,10 +73,14 @@ Las reglas impiden que alguien sin aceptar, o con «Solo ver», pueda cambiar na
 
 ## 7. Google Calendar (citas del dentista)
 
-1. Entra en <https://console.cloud.google.com> y arriba elige el **mismo proyecto** de Firebase.
-2. **APIs y servicios → Biblioteca** → **Google Calendar API** → **Habilitar**.
-3. **APIs y servicios → Pantalla de consentimiento de OAuth** (o «Google Auth Platform» → **Público**) → en **Usuarios de prueba**, añade tu email.
-4. En la app, pulsa **Actualizar desde Google Calendar**. Google dirá que la app no está verificada: es normal porque es tuya; pulsa **Continuar**.
+Se conecta una sola vez y luego se actualiza solo cada 30 minutos. No hace falta tocar nada en Google Cloud.
+
+1. Abre **calendar.google.com** en el navegador (en el móvil o la tablet, activa **Sitio de escritorio**).
+2. ⚙️ **Configuración** → en la izquierda, toca tu calendario (el que lleva tu nombre).
+3. Baja hasta **Integrar el calendario** y copia la **Dirección secreta en formato iCal**.
+4. En la app, en **Visitas al dentista**, pégala y pulsa **Conectar**.
+
+La app busca eventos con «dentista», «ortodoncista», «Invisalign» o «clínica dental» en el título, la descripción o el lugar. La dirección secreta solo la guarda tu cuenta; nadie más del diario puede verla. Si algún día la cambias en Google («Restablecer»), desconecta en la app y pega la nueva.
 
 ---
 

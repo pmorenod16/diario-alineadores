@@ -348,9 +348,32 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
   <section id="secDent" aria-labelledby="h-dent">
     <div class="sechead">
       <h2 id="h-dent">Visitas al dentista</h2>
-      <button class="ghost" id="calBtn" hidden>Actualizar desde Google Calendar</button>
     </div>
     <div class="visits" id="visits"></div>
+    <div class="card" id="calCard" hidden>
+      <div id="calOn" hidden style="display:flex;flex-direction:column;gap:8px">
+        <p><b>✓ Conectado a tu Google Calendar</b></p>
+        <p class="muted" id="calStatus">Se actualiza solo cada 30 minutos.</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+          <button class="ghost" id="calNow" type="button">Actualizar ahora</button>
+          <button class="link danger" id="calOff" type="button">Desconectar</button>
+        </div>
+      </div>
+      <form id="calForm" style="display:flex;flex-direction:column;gap:10px" novalidate>
+        <p><b>Conecta tu Google Calendar</b> y las citas del dentista aparecerán solas, sin tener que actualizar nada.</p>
+        <ol class="muted" style="margin:0;padding-left:20px">
+          <li>Abre <b>calendar.google.com</b> en el navegador (en el móvil, con «Sitio de escritorio»).</li>
+          <li>⚙️ <b>Configuración</b> → en la izquierda, toca tu calendario (con tu nombre).</li>
+          <li>Baja hasta <b>Integrar el calendario</b> y copia la <b>Dirección secreta en formato iCal</b>.</li>
+          <li>Pégala aquí:</li>
+        </ol>
+        <div class="field"><label for="calIcs">Dirección secreta en formato iCal</label>
+          <input id="calIcs" type="url" autocomplete="off" spellcheck="false" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></div>
+        <div class="err" id="calErr"></div>
+        <button class="primary" type="submit">Conectar</button>
+        <p class="muted">Esa dirección es privada: solo la guarda tu cuenta y nadie más con acceso al diario puede verla. Solo se leen las citas con «dentista», «ortodoncista», «Invisalign» o «clínica dental».</p>
+      </form>
+    </div>
   </section>
 
   <section id="secAvisos" aria-labelledby="h-avisos">
@@ -736,6 +759,7 @@ function openDiario(c){
   }
   if(canWrite()) loadRem();
   if(!isOwner()) loadAvisos();
+  watchCalendar();
 }
 function accessLost(err){
   if(err?.code === "permission-denied"){ toast("Ya no tienes acceso a este diario."); stopDiario(); loadChoices(); }
@@ -749,7 +773,7 @@ function applyRole(){
   $("#secDent").hidden = view;
   $("#secRem").hidden = view;
   $("#secShare").hidden = !isOwner();
-  $("#calBtn").hidden = !isOwner();
+  $("#calCard").hidden = !isOwner();
   $("#secDay").hidden = !view;
   $("#interval").disabled = !canWrite();
   $("#alNum").disabled = !canWrite();
@@ -917,7 +941,7 @@ function renderVisits(){
   const box = $("#visits");
   if(!visits.length){
     box.innerHTML = `<div class="note">${isOwner()
-      ? "Pulsa «Actualizar desde Google Calendar» para traer tus citas. Busco eventos con «dentista», «ortodoncista», «Invisalign» o «clínica dental» en el título."
+      ? "Aún no hay citas del dentista. Conecta tu Google Calendar aquí abajo y aparecerán solas."
       : "Aún no hay citas del dentista en este diario."}</div>`;
     return;
   }
@@ -1109,31 +1133,51 @@ $("#reqList").addEventListener("click", async e => {
   }
 });
 
-// ================== Google Calendar ==================
-$("#calBtn").onclick = async () => {
-  const btn = $("#calBtn"); btn.disabled = true; btn.textContent = "Leyendo calendario…";
+// ================== Google Calendar (dirección secreta iCal, se actualiza sola) ==================
+const ICS_RE = /^https:\/\/calendar\.google\.com\/calendar\/ical\/[^/]+\/private-[a-z0-9]+\/basic\.ics$/i;
+let calUnsub = null;
+function watchCalendar(){
+  if(calUnsub){ calUnsub(); calUnsub = null; }
+  if(!isOwner()) return;
+  calUnsub = F.onSnapshot(F.doc(db,"usuarios",auth.currentUser.uid), s => {
+    const c = s.exists() ? s.data().calendario : null;
+    const on = !!(c && c.ics && c.diarioId === D.id);
+    $("#calOn").hidden = !on; $("#calForm").hidden = on;
+    if(!on) return;
+    const last = c.ultima?.toDate?.();
+    const errTxt = {no_encontrado:"Google dice que esa dirección ya no existe. Desconecta y pega la nueva."}[c.error] || (c.error ? "No se ha podido leer el calendario la última vez. Se volverá a intentar sola." : "");
+    $("#calStatus").textContent = c.forzar ? "Actualizando… tardará unos minutos."
+      : errTxt ? errTxt
+      : last ? `Última actualización: ${fmtLong(last)} a las ${pad(last.getHours())}:${pad(last.getMinutes())}. Se actualiza sola cada 30 minutos.`
+      : "Conectado. Las citas aparecerán en unos minutos.";
+  }, () => {});
+  unsubs.push(() => { if(calUnsub){ calUnsub(); calUnsub = null; } });
+}
+$("#calForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const url = $("#calIcs").value.trim();
+  $("#calErr").textContent = "";
+  if(!ICS_RE.test(url)){
+    $("#calErr").textContent = url.includes("/public/") ? "Esa es la dirección pública. Copia la «Dirección secreta en formato iCal», que lleva la palabra private."
+      : "No parece la dirección secreta en formato iCal. Debe empezar por https://calendar.google.com/calendar/ical/ y acabar en basic.ics.";
+    return;
+  }
   try{
-    const provider = new A.GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
-    const u = auth.currentUser;
-    const hasGoogle = u.providerData.some(p => p.providerId === "google.com");
-    const res = hasGoogle ? await A.reauthenticateWithPopup(u, provider) : await A.linkWithPopup(u, provider);
-    const token = A.GoogleAuthProvider.credentialFromResult(res)?.accessToken;
-    if(!token) throw new Error("token");
-    const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-    url.search = new URLSearchParams({timeMin:addDays(today(),-120).toISOString(), timeMax:addDays(today(),365).toISOString(), singleEvents:"true", orderBy:"startTime", maxResults:"2500"});
-    const r = await fetch(url, {headers:{Authorization:`Bearer ${token}`}});
-    if(!r.ok) throw Object.assign(new Error("api"), {status:r.status});
-    const j = await r.json();
-    const items = (j.items||[]).filter(ev => KEYWORDS.test(ev.summary||"") || KEYWORDS.test(ev.description||"") || KEYWORDS.test(ev.location||""))
-      .map(ev => ({title: ev.summary || "Dentista", allDay: !!ev.start?.date, date: ev.start?.date || ev.start?.dateTime})).filter(x => x.date);
-    await F.updateDoc(F.doc(db,"diarios",D.id), {visitas: items, visitasAt: F.serverTimestamp()});
-    toast(items.length ? `${items.length} cita${items.length>1?"s":""} del dentista encontradas.` : "No he encontrado citas del dentista.");
-  }catch(err){
-    if(err?.status === 403) toast("Falta activar la API de Google Calendar en tu proyecto (guía, paso 6).");
-    else if(err?.code) toast(authMsg(err));
-    else toast("No se ha podido leer el calendario. Vuelve a probar.");
-  }finally{ btn.disabled = false; btn.textContent = "Actualizar desde Google Calendar"; }
+    await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {calendario:{ics:url, diarioId:D.id, forzar:true, error:""}}, {merge:true});
+    $("#calIcs").value = "";
+    toast("Calendario conectado. Las citas aparecerán en unos minutos.");
+  }catch(err){ $("#calErr").textContent = "No se ha podido guardar. Comprueba la conexión."; }
+});
+$("#calNow").onclick = async () => {
+  try{ await F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {"calendario.forzar": true}); toast("Se actualizará en unos minutos."); }
+  catch(e){ toast("No se ha podido pedir la actualización."); }
+};
+let confirmCalOff = false;
+$("#calOff").onclick = async () => {
+  if(!confirmCalOff){ confirmCalOff = true; $("#calOff").textContent = "¿Seguro? Toca otra vez"; setTimeout(()=>{ confirmCalOff=false; $("#calOff").textContent="Desconectar"; }, 4000); return; }
+  confirmCalOff = false; $("#calOff").textContent = "Desconectar";
+  try{ await F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {calendario: F.deleteField()}); toast("Calendario desconectado."); }
+  catch(e){ toast("No se ha podido desconectar."); }
 };
 
 // ================== recordatorios ==================

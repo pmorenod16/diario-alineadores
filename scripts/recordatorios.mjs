@@ -5,6 +5,9 @@
 //    (cepillados, cambios, limpiezas) y se lo notifica a las personas con acceso que
 //    tienen los avisos activados.
 // 3. Avisa al dueño de un diario cuando alguien pide acceso con su código.
+// 4. Cada 30 minutos, trae las citas del dentista del Google Calendar del dueño.
+
+import { parseICS, dentistVisits, isValidIcsUrl } from "./calendario.mjs";
 
 export const WINDOW_MIN = 90;
 export const MEALS = ["desayuno", "comida", "cena"];
@@ -153,6 +156,31 @@ async function requestNotices(admin, db) {
   return sent;
 }
 
+async function calendarSync(admin, db, users, now) {
+  let n = 0;
+  for (const u of users.docs) {
+    const cal = u.data().calendario;
+    if (!cal?.ics || !cal.diarioId || !isValidIcsUrl(cal.ics)) continue;
+    const last = cal.ultima?.toMillis?.() || 0;
+    if (!cal.forzar && now.getTime() - last < 29 * 60 * 1000) continue;
+    const diario = await db.doc(`diarios/${cal.diarioId}`).get();
+    if (!diario.exists || diario.data().ownerUid !== u.id) continue;
+    const upd = { "calendario.ultima": admin.firestore.Timestamp.fromDate(now), "calendario.forzar": false };
+    try {
+      const res = await fetch(cal.ics, { signal: AbortSignal.timeout(20000) });
+      if (!res.ok) throw new Error(res.status === 404 ? "no_encontrado" : `http_${res.status}`);
+      const visitas = dentistVisits(parseICS(await res.text()), now);
+      await diario.ref.update({ visitas, visitasAt: admin.firestore.Timestamp.fromDate(now) });
+      upd["calendario.error"] = "";
+      n++;
+    } catch (e) {
+      upd["calendario.error"] = String(e.message || e).slice(0, 80);
+    }
+    await u.ref.update(upd);
+  }
+  return n;
+}
+
 async function main() {
   const { default: admin } = await import("firebase-admin");
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -214,6 +242,8 @@ async function main() {
   console.log(`Avisos a seguidores enviados: ${avisos}`);
   const sol = await requestNotices(admin, db);
   console.log(`Avisos de solicitudes enviados: ${sol}`);
+  const cal = await calendarSync(admin, db, users, now);
+  console.log(`Calendarios actualizados: ${cal}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
