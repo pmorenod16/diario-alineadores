@@ -233,7 +233,7 @@ async function diagnose(admin, db) {
     if (!tokens.length) continue;
     const res = await admin.messaging().sendEachForMulticast({
       tokens,
-      data: { title: "🔔 Prueba del Diario de Alineadores", body: `Si ves esto, las notificaciones funcionan (enviada a las ${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date())}).`, tipo: "aviso" },
+      data: { title: "🔔 Prueba del Diario de Alineadores", body: `Si ves esto, las notificaciones funcionan (enviada desde internet a las ${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date())}).`, tipo: "aviso" },
       webpush: { headers: { Urgency: "high", TTL: "600" } }
     });
     res.responses.forEach((rr, j) => console.log(`  móvil ${j + 1}: ${rr.success ? "prueba enviada ✓" : "✗ " + (rr.error?.code || rr.error?.message)}`));
