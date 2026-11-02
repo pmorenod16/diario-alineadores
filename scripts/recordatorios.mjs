@@ -154,7 +154,7 @@ async function requestNotices(admin, db) {
 async function main() {
   const { default: admin } = await import("firebase-admin");
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) throw new Error("Falta el secreto FIREBASE_SERVICE_ACCOUNT (guía, paso 5).");
+  if (!raw) { console.log("Aún no está el secreto FIREBASE_SERVICE_ACCOUNT (guía, paso 6). No hago nada."); return; }
   admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
   const db = admin.firestore();
   const now = new Date();
