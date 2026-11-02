@@ -196,6 +196,7 @@ async function main() {
   // Por eso, cuando viene del horario, el script se queda revisando cada 5 minutos
   // durante LOOP_MINUTES; la siguiente ejecución toma el relevo al acabar.
   const loopMin = Number(process.env.LOOP_MINUTES || 0);
+  if (!loopMin) await diagnose(admin, db);
   const deadline = Date.now() + loopMin * 60 * 1000;
   let fails = 0;
   for (;;) {
@@ -204,6 +205,21 @@ async function main() {
     if (Date.now() + 5 * 60 * 1000 > deadline) break;
     await new Promise(r => setTimeout(r, 5 * 60 * 1000));
   }
+}
+
+// Comprobación rápida al lanzarlo a mano: base de datos y reglas publicadas.
+async function diagnose(admin, db) {
+  try {
+    const n = (await db.collection("usuarios").limit(50).get()).size;
+    const d = (await db.collection("diarios").limit(50).get()).size;
+    console.log(`✓ Base de datos accesible · usuarios: ${n} · diarios: ${d}`);
+  } catch (e) { console.log(`✗ Base de datos: ${e.message}`); throw e; }
+  try {
+    const rs = await admin.securityRules().getFirestoreRuleset();
+    const src = rs.source.map(f => f.content).join("\n");
+    const ok = src.includes("Diario de Alineadores") && src.includes("match /codigos/") && src.includes("match /eventos/");
+    console.log(ok ? `✓ Reglas de la app publicadas (${rs.createTime})` : "✗ Las reglas publicadas NO son las de la app: pega firestore.rules en Firestore → Reglas → Publicar.");
+  } catch (e) { console.log(`? No he podido leer las reglas: ${e.message}`); }
 }
 
 async function runOnce(admin, db) {
