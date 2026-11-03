@@ -640,8 +640,7 @@ $("#pickOut").onclick = logout; $("#outBtn").onclick = logout; $("#verifyOut").o
 
 const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
 
-step("Paso 3 de 4: comprobando tu cuenta…");
-A.onAuthStateChanged(auth, user => route(user));
+// (el aviso de cambios de sesión se registra al final del script, cuando ya está todo definido)
 
 // Al tocar un recordatorio en la app nativa, se abre la app y pregunta si marcarlo.
 function setupNative(){
@@ -1428,6 +1427,11 @@ $("#remSave").onclick = async () => {
     if(!hasToken()) toast("Guardado. Activa las notificaciones para recibir los avisos.");
   }catch(e){ $("#remMsg").textContent = "No se ha podido guardar. Revisa la conexión."; }
 };
+
+// ================== arranque ==================
+// Se registra al final para que todas las variables de arriba ya existan cuando Firebase avise.
+step("Paso 3 de 4: comprobando tu cuenta…");
+A.onAuthStateChanged(auth, user => route(user).catch(e => showErr("Error: " + (e?.code || "") + " " + (e?.message || e))));
 </script>
 </body>
 </html>
