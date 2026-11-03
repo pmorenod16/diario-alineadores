@@ -470,6 +470,19 @@ let toastT;
 function toast(t){ const el=$("#toast"); el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true, 2600); }
 function setStatus(t){ $("#status").textContent = t || ""; }
 
+// ---- app nativa de Android (Capacitor) ----
+// En la app nativa, Capacitor pone window.Capacitor: los avisos los recibe Android directamente
+// (como WhatsApp) y «Entrar con Google» se hace con la cuenta del móvil.
+const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+let _fm = null, _fa = null;
+const FM = () => _fm || (_fm = window.Capacitor.registerPlugin("FirebaseMessaging"));
+const FA = () => _fa || (_fa = window.Capacitor.registerPlugin("FirebaseAuthentication"));
+const TOKF = () => isNative() ? "apptokens" : "tokens";
+let nativePerm = "prompt";
+const pushPerm = () => isNative() ? nativePerm : (("Notification" in window) ? Notification.permission : "unsupported");
+const VERBO = {desayuno:"desayunar", comida:"comer", cena:"cenar"};
+let nativePrompt = null;   // aviso tocado en la app nativa, pendiente de confirmar
+
 // ---- service worker (offline + notificaciones) ----
 let swReg = null;
 if("serviceWorker" in navigator){
@@ -544,6 +557,18 @@ const authMsg = e => ({
 }[e?.code] || "No se ha podido entrar. Vuelve a probar.");
 $("#googleBtn").onclick = async () => {
   $("#authErr").textContent = "";
+  if(isNative()){
+    try{
+      const r = await FA().signInWithGoogle();
+      const idToken = r?.credential?.idToken;
+      if(!idToken) throw new Error("sin token");
+      await A.signInWithCredential(auth, A.GoogleAuthProvider.credential(idToken));
+    }catch(err){
+      const m = String(err?.message || err || "");
+      $("#authErr").textContent = /cancel/i.test(m) ? "Has cancelado el inicio de sesión." : (err?.code ? authMsg(err) : "No se ha podido entrar con Google. Prueba con tu email y contraseña.");
+    }
+    return;
+  }
   const provider = new A.GoogleAuthProvider();
   provider.setCustomParameters({prompt:"select_account"});
   try{ await A.signInWithPopup(auth, provider); }
@@ -600,12 +625,33 @@ $("#verifyResend").onclick = async () => {
   catch(err){ $("#verifyErr").textContent = authMsg(err); }
 };
 
-const logout = async () => { stopDiario(); stopWait(); await A.signOut(auth); };
+const logout = async () => { stopDiario(); stopWait(); if(isNative()) FA().signOut().catch(()=>{}); await A.signOut(auth); };
 $("#pickOut").onclick = logout; $("#outBtn").onclick = logout; $("#verifyOut").onclick = logout;
 
 const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
 
 A.onAuthStateChanged(auth, user => route(user));
+
+// Al tocar un recordatorio en la app nativa, se abre la app y pregunta si marcarlo.
+function setupNative(){
+  if(!isNative()) return;
+  document.querySelectorAll(".installBtn").forEach(b => b.remove());
+  FM().checkPermissions().then(p => { nativePerm = p?.receive || "prompt"; renderPerm(); renderAvPerm?.(); }).catch(()=>{});
+  FM().addListener("notificationActionPerformed", ev => {
+    const d = ev?.notification?.data || {};
+    if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){
+      nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario};
+      renderBanner(); window.scrollTo({top:0, behavior:"smooth"});
+    }
+  }).catch(()=>{});
+  FM().addListener("notificationReceived", ev => {
+    const n = ev?.notification || {};
+    const d = n.data || {};
+    if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){ nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario}; renderBanner(); }
+    else if(n.title) toast(n.title + (n.body ? " — " + n.body : ""));
+  }).catch(()=>{});
+}
+if(document.readyState === "complete") setupNative(); else window.addEventListener("load", setupNative);
 
 async function route(user){
   if(!user){ stopDiario(); stopWait(); setMode("login"); show("scrAuth"); return; }
@@ -931,6 +977,14 @@ $("#dvNext").onclick = () => moveDay(1);
 }
 
 function renderBanner(){
+  if(nativePrompt && D && canWrite()){
+    const {meal, dia} = nativePrompt;
+    $("#banner").hidden = !!dayData(dia)[meal];
+    if(dayData(dia)[meal]){ nativePrompt = null; return; }
+    $("#bannerText").textContent = `¿Te has lavado los dientes después de ${VERBO[meal] || meal}${dia === keyOf(today()) ? "" : ` (${fmtLong(parseKey(dia))})`}?`;
+    $("#bannerBtn").dataset.k = meal; $("#bannerBtn").dataset.dia = dia;
+    return;
+  }
   const b = $("#banner");
   if(!D || !canWrite()){ b.hidden = true; return; }
   const now = today(), dd = dayData(keyOf(now)), mins = now.getHours()*60+now.getMinutes();
@@ -988,7 +1042,12 @@ async function setField(k, field, value){
 }
 $("#brush").onclick = e => { const b=e.target.closest(".tap"); if(b) setField(sel, b.dataset.k); };
 $("#alrows").onclick = e => { const b=e.target.closest(".row"); if(b) setField(sel, b.dataset.k); };
-$("#bannerBtn").onclick = e => setField(keyOf(today()), e.currentTarget.dataset.k, true);
+$("#bannerBtn").onclick = e => {
+  const b = e.currentTarget;
+  setField(b.dataset.dia || keyOf(today()), b.dataset.k, true);
+  if(nativePrompt){ nativePrompt = null; toast("Marcado ✓"); }
+  b.dataset.dia = ""; renderBanner();
+};
 let ivT;
 $("#interval").addEventListener("input", e => {
   if(!canWrite()) return;
@@ -1200,16 +1259,25 @@ async function loadRem(){
   renderPerm(); renderBanner();
 }
 function renderPerm(){
-  const p = ("Notification" in window) ? Notification.permission : "unsupported";
+  const p = pushPerm();
   $("#remEnable").hidden = p === "granted" && hasToken();
   $("#remPermTxt").textContent =
     p === "unsupported" ? "Este navegador no admite notificaciones. Instala la app en la pantalla de inicio (guía, paso 8)." :
-    p === "denied" ? "Has bloqueado las notificaciones. Actívalas en los ajustes del navegador para esta app." :
+    p === "denied" ? (isNative() ? "Has bloqueado las notificaciones. Actívalas en Ajustes → Aplicaciones → Diario de Alineadores → Notificaciones." : "Has bloqueado las notificaciones. Actívalas en los ajustes del navegador para esta app.") :
     (p === "granted" && hasToken()) ? "Activadas en este móvil." :
     "Actívalas para recibir los avisos aunque la app esté cerrada.";
 }
 const hasToken = () => { try{ return !!localStorage.getItem("fcmToken"); }catch(e){ return false; } };
 async function enablePush(){
+  if(isNative()){
+    const p = await FM().requestPermissions(); nativePerm = p?.receive || "denied";
+    if(nativePerm !== "granted"){ renderPerm(); return null; }
+    try{ await FM().createChannel({id:"recordatorios", name:"Recordatorios", description:"Recordatorios de cepillado y avisos del diario", importance:5, visibility:1, vibration:true, lights:true}); }catch(e){}
+    const { token } = await FM().getToken();
+    let old = null; try{ old = localStorage.getItem("fcmToken"); localStorage.setItem("fcmToken", token); }catch(e){}
+    if(old && old !== token && auth.currentUser) F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {apptokens: F.arrayRemove(old)}).catch(()=>{});
+    return token;
+  }
   if(!("Notification" in window)){ renderPerm(); return null; }
   const p = await Notification.requestPermission();
   if(p !== "granted"){ renderPerm(); return null; }
@@ -1238,22 +1306,31 @@ async function renderPushLog(){
   }catch(e){ $("#pushLog").textContent = "No se puede leer en este navegador."; }
 }
 $("#pushLogBtn").onclick = renderPushLog;
-renderPushLog();
+if(isNative()) $("#pushLogBtn").closest(".li").hidden = true; else renderPushLog();
 // Como en WhatsApp: si ya diste permiso de notificaciones, cada vez que abres la app
 // este móvil queda registrado en tu cuenta sin tener que pulsar nada.
 let autoRegDone = false;
 async function autoRegisterPush(){
-  if(autoRegDone || !("Notification" in window) || Notification.permission !== "granted" || !auth.currentUser) return;
+  if(autoRegDone || !auth.currentUser) return;
+  // en la app nativa se pide el permiso la primera vez, como WhatsApp; en la web solo si ya se dio
+  if(!isNative() && pushPerm() !== "granted") return;
   autoRegDone = true;
   try{
     const token = await enablePush();
-    if(token) await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {email: myEmail(), tokens: F.arrayUnion(token)}, {merge:true});
+    if(token) await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {email: myEmail(), [TOKF()]: F.arrayUnion(token)}, {merge:true});
   }catch(e){ autoRegDone = false; }
 }
 $("#testPush").onclick = async () => {
   const b = $("#testPush"), t = $("#testTxt"); b.disabled = true;
   const steps = [];
   try{
+    if(isNative()){
+      const token = await enablePush();
+      if(!token) throw new Error("Falta el permiso de notificaciones: actívalo en los ajustes de Android para esta app.");
+      await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {email: myEmail(), apptokens: F.arrayUnion(token)}, {merge:true});
+      t.textContent = "Móvil registrado ✓. Los avisos llegarán como notificaciones normales de Android.";
+      return;
+    }
     if(!("Notification" in window)) throw new Error("Este navegador no admite notificaciones.");
     if(Notification.permission !== "granted"){ const p = await Notification.requestPermission(); if(p !== "granted") throw new Error("Las notificaciones están bloqueadas para esta app en los ajustes."); }
     const reg = swReg || await navigator.serviceWorker.ready;
@@ -1261,7 +1338,7 @@ $("#testPush").onclick = async () => {
     steps.push("Notificación mostrada ✓");
     const token = await enablePush();
     if(!token) throw new Error("No se ha podido registrar el móvil.");
-    const data = {email: myEmail(), tokens: F.arrayUnion(token)};
+    const data = {email: myEmail(), [TOKF()]: F.arrayUnion(token)};
     await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
     steps.push("móvil registrado de nuevo ✓");
     t.textContent = steps.join(" · ") + ". Si no has visto la notificación, revisa los ajustes de notificaciones de Android para esta app.";
@@ -1275,7 +1352,7 @@ async function saveRem(withToken){
   REM = next;
   const data = {email: myEmail(), nombre: auth.currentUser.displayName || "",
     rem: {diarioId: D.id, tz: timeZone, desayuno: next.desayuno, comida: next.comida, cena: next.cena}};
-  if(withToken) data.tokens = F.arrayUnion(withToken);
+  if(withToken) data[TOKF()] = F.arrayUnion(withToken);
   await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
   renderBanner();
 }
@@ -1299,7 +1376,7 @@ async function loadAvisos(){
   renderAvPerm();
 }
 function renderAvPerm(){
-  const p = ("Notification" in window) ? Notification.permission : "unsupported";
+  const p = pushPerm();
   const ok = p === "granted" && hasToken();
   $("#avEnable").hidden = ok;
   $("#avPermTxt").textContent =
@@ -1309,7 +1386,7 @@ function renderAvPerm(){
 }
 async function saveAvisos(token){
   const data = {email: myEmail(), nombre: auth.currentUser.displayName || "", avisos:{diarioId:D.id, on:$("#avOn").checked}};
-  if(token) data.tokens = F.arrayUnion(token);
+  if(token) data[TOKF()] = F.arrayUnion(token);
   await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
 }
 $("#avEnable").onclick = async () => {

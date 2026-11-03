@@ -85,17 +85,49 @@ export function buildFollowMessage(events, done, hoy) {
   return { title: `🦷 ${who}`, body };
 }
 
-async function sendTo(admin, tokens, data) {
-  const res = await admin.messaging().sendEachForMulticast({
-    tokens, data, webpush: { headers: { Urgency: "high", TTL: "21600" } }
-  });
-  const dead = [];
-  res.responses.forEach((r, i) => {
-    const code = r.error?.code || "";
-    if (code.includes("registration-token-not-registered") || code.includes("invalid-registration-token") || code.includes("invalid-argument")) dead.push(tokens[i]);
-  });
-  return { ok: res.successCount, dead };
+const isDead = code => code.includes("registration-token-not-registered") || code.includes("invalid-registration-token") || code.includes("invalid-argument");
+
+/**
+ * Envía un aviso a todos los aparatos de una persona.
+ * - App Android (apptokens): notificación nativa de alta prioridad, como WhatsApp.
+ * - Web (tokens): mensaje de datos que muestra el service worker.
+ * Devuelve cuántos han llegado a Google y qué registros ya no existen, para borrarlos.
+ */
+export async function sendToUser(admin, person, data, ttlSec = 21600) {
+  const strData = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? "")]));
+  const out = { ok: 0, deadWeb: [], deadApp: [] };
+  const web = person.tokens || [], app = person.apptokens || [];
+  if (app.length) {
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens: app,
+      notification: { title: strData.title, body: strData.body },
+      data: strData,
+      android: {
+        priority: "high",
+        ttl: ttlSec * 1000,
+        notification: { channelId: "recordatorios", sound: "default", defaultVibrateTimings: true, color: "#17806F" }
+      }
+    });
+    out.ok += res.successCount;
+    res.responses.forEach((r, i) => { if (!r.success && isDead(r.error?.code || "")) out.deadApp.push(app[i]); });
+  }
+  if (web.length) {
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens: web, data: strData, webpush: { headers: { Urgency: "high", TTL: String(ttlSec) } }
+    });
+    out.ok += res.successCount;
+    res.responses.forEach((r, i) => { if (!r.success && isDead(r.error?.code || "")) out.deadWeb.push(web[i]); });
+  }
+  return out;
 }
+
+function cleanup(admin, r) {
+  const u = {};
+  if (r.deadWeb.length) u.tokens = admin.firestore.FieldValue.arrayRemove(...r.deadWeb);
+  if (r.deadApp.length) u.apptokens = admin.firestore.FieldValue.arrayRemove(...r.deadApp);
+  return u;
+}
+const hasDevices = d => (d.tokens || []).length + (d.apptokens || []).length > 0;
 
 async function hasAccess(db, diarioId, diarioData, uid, email) {
   if (diarioData.ownerUid === uid) return true;
@@ -128,14 +160,15 @@ async function followNotices(admin, db, now) {
       const followers = await db.collection("usuarios").where("avisos.diarioId", "==", diarioId).get();
       for (const f of followers.docs) {
         const fd = f.data();
-        if (fd.avisos?.on === false || !(fd.tokens || []).length) continue;
+        if (fd.avisos?.on === false || !hasDevices(fd)) continue;
         if (!(await hasAccess(db, diarioId, diario.data(), f.id, fd.email))) continue;
         const tz = fd.rem?.tz || "Europe/Madrid";
         const msg = buildFollowMessage(events.filter(e => e.por !== f.id), done, localParts(now, tz).dia);
         if (!msg) continue;
-        const r = await sendTo(admin, fd.tokens, { ...msg, tipo: "aviso", diario: diarioId });
+        const r = await sendToUser(admin, fd, { ...msg, tipo: "aviso", diario: diarioId });
         sent += r.ok;
-        if (r.dead.length) await f.ref.update({ tokens: admin.firestore.FieldValue.arrayRemove(...r.dead) });
+        const c = cleanup(admin, r);
+        if (Object.keys(c).length) await f.ref.update(c);
       }
     }
     const batch = db.batch();
@@ -151,15 +184,15 @@ async function requestNotices(admin, db) {
   for (const r of reqs.docs) {
     const d = r.data();
     const owner = await db.doc(`usuarios/${d.ownerUid}`).get();
-    const tokens = owner.exists ? owner.data().tokens || [] : [];
-    if (tokens.length) {
-      const res = await sendTo(admin, tokens, {
+    if (owner.exists && hasDevices(owner.data())) {
+      const res = await sendToUser(admin, owner.data(), {
         title: "👋 Nueva solicitud",
         body: `${d.nombre || d.email} quiere acceder a tu diario. Ábrelo para aceptarla o rechazarla.`,
         tipo: "aviso", diario: d.diarioId
       });
       sent += res.ok;
-      if (res.dead.length) await owner.ref.update({ tokens: admin.firestore.FieldValue.arrayRemove(...res.dead) });
+      const c = cleanup(admin, res);
+      if (Object.keys(c).length) await owner.ref.update(c);
     }
     await r.ref.update({ notificado: true });
   }
@@ -236,10 +269,10 @@ async function diagnose(admin, db) {
   let i = 0;
   for (const u of us.docs) {
     const x = u.data(); i++;
-    const tokens = x.tokens || [];
+    const tokens = [...(x.tokens || []), ...(x.apptokens || [])];
     const r = x.rem || {};
     const horas = MEALS.map(m => `${m} ${r[m]?.on === false ? "off" : (r[m]?.time || DEFAULT_REM[m]?.time || "—")}`).join(", ");
-    console.log(`Persona ${i}: móviles registrados: ${tokens.length} · recordatorios: ${r.diarioId ? horas : "sin guardar"} · último enviado: ${JSON.stringify(x.lastSent || {})}`);
+    console.log(`Persona ${i}: aparatos registrados: ${tokens.length} (app Android: ${(x.apptokens || []).length}, web: ${(x.tokens || []).length}) · recordatorios: ${r.diarioId ? horas : "sin guardar"} · último enviado: ${JSON.stringify(x.lastSent || {})}`);
   }
 }
 
@@ -251,8 +284,8 @@ async function runOnce(admin, db) {
 
   for (const u of users.docs) {
     const data = u.data();
-    const rem = data.rem, tokens = data.tokens || [];
-    if (!rem?.diarioId || !tokens.length) continue;
+    const rem = data.rem;
+    if (!rem?.diarioId || !hasDevices(data)) continue;
     const parts = localParts(now, rem.tz || "Europe/Madrid");
     const meals = dueMeals(rem, parts, data.lastSent || {});
     if (!meals.length) continue;
@@ -270,29 +303,22 @@ async function runOnce(admin, db) {
     const day = await db.doc(`diarios/${rem.diarioId}/dias/${parts.dia}`).get();
     const done = day.exists ? day.data() : {};
     const lastSent = { ...(data.lastSent || {}) };
-    const dead = new Set();
+    const update = {};
 
     for (const meal of meals) {
       lastSent[meal] = sentKey(parts.dia, remTime(rem, meal));
       if (done[meal]) continue;
-      const res = await admin.messaging().sendEachForMulticast({
-        tokens,
-        data: {
-          title: "🪥 Hora de cepillarse",
-          body: `¿Te has lavado los dientes después de ${{ desayuno: "desayunar", comida: "comer", cena: "cenar" }[meal]}?`,
-          meal, dia: parts.dia, diario: rem.diarioId
-        },
-        webpush: { headers: { Urgency: "high", TTL: String(WINDOW_MIN * 60) } }
-      });
-      sent += res.successCount;
-      res.responses.forEach((r, i) => {
-        const code = r.error?.code || "";
-        if (code.includes("registration-token-not-registered") || code.includes("invalid-registration-token") || code.includes("invalid-argument")) dead.add(tokens[i]);
-      });
+      const res = await sendToUser(admin, data, {
+        title: "🪥 Hora de cepillarse",
+        body: `¿Te has lavado los dientes después de ${{ desayuno: "desayunar", comida: "comer", cena: "cenar" }[meal]}?`,
+        meal, dia: parts.dia, diario: rem.diarioId, tipo: "recordatorio"
+      }, WINDOW_MIN * 60);
+      sent += res.ok;
+      console.log(`  ${meal}: enviado a ${res.ok} aparato(s)`);
+      Object.assign(update, cleanup(admin, res));
     }
 
-    const update = { lastSent };
-    if (dead.size) update.tokens = admin.firestore.FieldValue.arrayRemove(...dead);
+    update.lastSent = lastSent;
     await u.ref.update(update);
   }
   console.log(`Recordatorios enviados: ${sent}`);
