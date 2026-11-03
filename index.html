@@ -1445,12 +1445,28 @@ $("#remSave").onclick = async () => {
   try{
     let token = null;
     try{ token = localStorage.getItem("fcmToken"); }catch(e){}
+    remAutoT = null;
     await saveRem(token);
     const f = k => REM[k].on ? REM[k].time : "desactivado";
     $("#remMsg").textContent = `Guardado. Desayuno: ${f("desayuno")} · Comida: ${f("comida")} · Cena: ${f("cena")}.`;
     if(!hasToken()) toast("Guardado. Activa las notificaciones para recibir los avisos.");
   }catch(e){ $("#remMsg").textContent = "No se ha podido guardar. Revisa la conexión."; }
 };
+
+// Las horas se guardan solas al cambiarlas (no hace falta pulsar «Guardar horas»).
+let remAutoT = null;
+function remAutoSave(){
+  clearTimeout(remAutoT);
+  $("#remMsg").textContent = "Guardando…";
+  remAutoT = setTimeout(() => $("#remSave").click(), 700);
+}
+for(const k of ["desayuno","comida","cena"]){
+  $("#t-"+k).addEventListener("change", remAutoSave);
+  $("#t-"+k).addEventListener("blur", remAutoSave);
+  $("#on-"+k).addEventListener("change", remAutoSave);
+}
+// si se cierra o se manda la app al fondo con un cambio pendiente, se guarda en ese momento
+document.addEventListener("visibilitychange", () => { if(document.hidden && remAutoT){ clearTimeout(remAutoT); remAutoT = null; $("#remSave").click(); } });
 
 // ================== arranque ==================
 // Se registra al final para que todas las variables de arriba ya existan cuando Firebase avise.
