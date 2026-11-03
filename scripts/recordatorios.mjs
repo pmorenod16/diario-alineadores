@@ -273,6 +273,15 @@ async function diagnose(admin, db) {
     const r = x.rem || {};
     const horas = MEALS.map(m => `${m} ${r[m]?.on === false ? "off" : (r[m]?.time || DEFAULT_REM[m]?.time || "—")}`).join(", ");
     console.log(`Persona ${i}: aparatos registrados: ${tokens.length} (app Android: ${(x.apptokens || []).length}, web: ${(x.tokens || []).length}) · recordatorios: ${r.diarioId ? horas : "sin guardar"} · último enviado: ${JSON.stringify(x.lastSent || {})}`);
+    // prueba solo a la app Android (al lanzarlo a mano), para comprobar que llegan los avisos nativos
+    if ((x.apptokens || []).length) {
+      const r = await sendToUser(admin, { apptokens: x.apptokens }, {
+        title: "🔔 Prueba de la app Android",
+        body: `Si ves esto, la app recibe los avisos como WhatsApp (${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date())}).`,
+        tipo: "aviso"
+      }, 600);
+      console.log(`  prueba app Android: entregada a ${r.ok} de ${x.apptokens.length}`);
+    }
   }
 }
 
