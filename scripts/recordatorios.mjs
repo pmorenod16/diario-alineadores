@@ -6,7 +6,7 @@
 //    tienen los avisos activados.
 // 3. Avisa al dueño de un diario cuando alguien pide acceso con su código.
 // 4. Cada 30 minutos, trae las citas del dentista del Google Calendar del dueño.
-// (cron-job.org la lanza cada 5 minutos; el horario de GitHub queda de respaldo)
+// (cron-job.org la lanza cada 5 minutos; el horario de GitHub queda de respaldo.)
 
 import { parseICS, dentistVisits, isValidIcsUrl } from "./calendario.mjs";
 
