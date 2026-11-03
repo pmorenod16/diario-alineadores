@@ -504,7 +504,18 @@ const TOKF = () => isNative() ? "apptokens" : "tokens";
 let nativePerm = "prompt";
 const pushPerm = () => isNative() ? nativePerm : (("Notification" in window) ? Notification.permission : "unsupported");
 const VERBO = {desayuno:"desayunar", comida:"comer", cena:"cenar"};
-let nativePrompt = null;   // aviso tocado en la app nativa, pendiente de confirmar
+let nativePrompt = null;   // aviso recibido con la app abierta, pendiente de confirmar
+let autoMark = null;       // aviso tocado: se marca en cuanto el diario esté cargado
+function tryAutoMark(){
+  if(!autoMark || !D) return;
+  const {meal, dia, diario} = autoMark;
+  if(diario && diario !== D.id) return;          // es de otro diario: se espera a que se abra ese
+  autoMark = null; nativePrompt = null;
+  if(!canWrite()){ toast("Solo puedes ver este diario."); return; }
+  if(!dayData(dia)[meal]) setField(dia, meal, true);
+  const t = `✓ Marcado: cepillado después de ${VERBO[meal] || meal}${dia === keyOf(today()) ? "" : ` (${fmtLong(parseKey(dia))})`}`;
+  toast(t); clearTimeout(toastT); toastT = setTimeout(() => $("#toast").hidden = true, 5000);
+}
 
 // ---- service worker (offline + notificaciones) ----
 let swReg = null;
@@ -670,11 +681,12 @@ async function setupNative(){
   document.querySelectorAll(".installBtn").forEach(b => b.remove());
   try{ await plug("FirebaseMessaging"); }catch(e){ showErr("No se han podido cargar las notificaciones nativas: " + (e?.message || e)); return; }
   fmCall("checkPermissions").then(p => { nativePerm = p?.receive || "prompt"; renderPerm(); renderAvPerm?.(); }).catch(()=>{});
+  // tocar el recordatorio = marcarlo como hecho
   fmCall("addListener", "notificationActionPerformed", ev => {
     const d = ev?.notification?.data || {};
     if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){
-      nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario};
-      renderBanner(); window.scrollTo({top:0, behavior:"smooth"});
+      autoMark = {meal: d.meal, dia: d.dia, diario: d.diario};
+      tryAutoMark();
     }
   }).catch(()=>{});
   fmCall("addListener", "notificationReceived", ev => {
@@ -840,6 +852,7 @@ function openDiario(c){
     snap.forEach(d => { days[d.id] = d.data(); });
     renderAll();
     handleMarkParam();
+    tryAutoMark();
   }, err => accessLost(err)));
   if(isOwner()){
     unsubs.push(F.onSnapshot(F.query(F.collection(db,"accesos"), F.where("diarioId","==",c.id), F.where("ownerUid","==",auth.currentUser.uid)), snap => renderShare(snap.docs.map(d => ({id:d.id, ...d.data()})))));
