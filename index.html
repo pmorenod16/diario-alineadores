@@ -766,6 +766,7 @@ function openDiario(c){
     unsubs.push(F.onSnapshot(F.query(F.collection(db,"solicitudes"), F.where("diarioId","==",c.id), F.where("ownerUid","==",auth.currentUser.uid)), snap => renderRequests(snap.docs.map(d => ({id:d.id, ...d.data()})))));
   }
   if(canWrite()) loadRem();
+  autoRegisterPush();
   if(!isOwner()) loadAvisos();
   watchCalendar();
 }
@@ -1238,6 +1239,17 @@ async function renderPushLog(){
 }
 $("#pushLogBtn").onclick = renderPushLog;
 renderPushLog();
+// Como en WhatsApp: si ya diste permiso de notificaciones, cada vez que abres la app
+// este móvil queda registrado en tu cuenta sin tener que pulsar nada.
+let autoRegDone = false;
+async function autoRegisterPush(){
+  if(autoRegDone || !("Notification" in window) || Notification.permission !== "granted" || !auth.currentUser) return;
+  autoRegDone = true;
+  try{
+    const token = await enablePush();
+    if(token) await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {email: myEmail(), tokens: F.arrayUnion(token)}, {merge:true});
+  }catch(e){ autoRegDone = false; }
+}
 $("#testPush").onclick = async () => {
   const b = $("#testPush"), t = $("#testTxt"); b.disabled = true;
   const steps = [];
