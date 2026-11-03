@@ -1,0 +1,22 @@
+{
+  "appId": "io.github.pmorenod16.diario",
+  "appName": "Diario de Alineadores",
+  "webDir": "www",
+  "server": {
+    "url": "https://pmorenod16.github.io/diario-alineadores/",
+    "androidScheme": "https",
+    "allowNavigation": ["pmorenod16.github.io", "*.firebaseapp.com", "*.googleapis.com", "accounts.google.com"]
+  },
+  "android": {
+    "backgroundColor": "#F3F6F5"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com"]
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
