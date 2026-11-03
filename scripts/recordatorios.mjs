@@ -241,12 +241,13 @@ async function main() {
   const loopMin = Number(process.env.LOOP_MINUTES || 0);
   if (process.env.DIAGNOSE === "1") await diagnose(admin, db);
   const deadline = Date.now() + loopMin * 60 * 1000;
+  const every = Number(process.env.CHECK_SECONDS || 300) * 1000;   // cada cuánto revisa dentro de una ejecución
   let fails = 0;
   for (;;) {
     try { await runOnce(admin, db); fails = 0; }
     catch (e) { if (e?.code === 7 || e?.code === 5 || ++fails >= 3 || !loopMin) throw e; console.error("Fallo puntual, reintento:", e.message); }
-    if (Date.now() + 5 * 60 * 1000 > deadline) break;
-    await new Promise(r => setTimeout(r, 5 * 60 * 1000));
+    if (Date.now() + every > deadline) break;
+    await new Promise(r => setTimeout(r, every));
   }
 }
 

@@ -2,7 +2,7 @@ name: Recordatorios
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # GitHub suele retrasarlo; cada ejecución revisa cada 5 min durante 55 min
+    - cron: "*/15 * * * *"   # respaldo: GitHub suele retrasarlo; cada ejecución revisa cada minuto durante 55 min
   workflow_dispatch: {}       # para probarlo a mano desde la pestaña Actions
   push:
     branches: [main]
@@ -29,6 +29,9 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          LOOP_MINUTES: ${{ github.event_name == 'schedule' && '55' || '0' }}
+          # cron-job.org la lanza cada 5 min (workflow_dispatch) y cada ejecución revisa cada minuto
+          # durante esos 5 min; el horario de GitHub hace lo mismo durante 55 min, de respaldo.
+          LOOP_MINUTES: ${{ github.event_name == 'schedule' && '55' || github.event_name == 'workflow_dispatch' && '4.7' || '0' }}
+          CHECK_SECONDS: "60"
           DIAGNOSE: ${{ github.event_name == 'push' && '1' || '0' }}
         run: node recordatorios.mjs
