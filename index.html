@@ -465,7 +465,12 @@ import { firebaseConfig, vapidKey, timeZone } from "./config.js";
 
 const $ = s => document.querySelector(s);
 const step = t => { const el = document.getElementById("loadStep"); if(el) el.textContent = t; };
-const showErr = m => { const el = document.getElementById("loadErr"); if(el) el.textContent = String(m).slice(0, 200); };
+const showErr = m => {
+  const txt = String(m).slice(0, 220);
+  const auth = document.getElementById("scrAuth");
+  const el = document.getElementById(auth && !auth.hidden ? "authErr" : "loadErr");
+  if(el) el.textContent = txt;
+};
 window.addEventListener("error", e => showErr("Error: " + (e.message || e.error)));
 window.addEventListener("unhandledrejection", e => showErr("Error: " + (e.reason?.code || "") + " " + (e.reason?.message || e.reason)));
 step("Paso 1 de 4: cargando la app…");
@@ -576,13 +581,19 @@ $("#googleBtn").onclick = async () => {
   $("#authErr").textContent = "";
   if(isNative()){
     try{
-      const r = await (await FA()).signInWithGoogle();
+      $("#authErr").textContent = "Abriendo tu cuenta de Google…";
+      const fa = await FA();
+      const r = await Promise.race([
+        fa.signInWithGoogle(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("Google no ha respondido en 60 segundos")), 60000))
+      ]);
+      $("#authErr").textContent = "Entrando…";
       const idToken = r?.credential?.idToken;
       if(!idToken) throw new Error("sin token");
       await A.signInWithCredential(auth, A.GoogleAuthProvider.credential(idToken));
     }catch(err){
       const m = String(err?.message || err || "");
-      $("#authErr").textContent = /cancel/i.test(m) ? "Has cancelado el inicio de sesión." : (err?.code ? authMsg(err) : "No se ha podido entrar con Google. Prueba con tu email y contraseña.");
+      $("#authErr").textContent = /cancel/i.test(m) ? "Has cancelado el inicio de sesión." : (err?.code && String(err.code).startsWith("auth/") ? authMsg(err) : `No se ha podido entrar con Google (${m.slice(0,140)}). Prueba con tu email y contraseña.`);
     }
     return;
   }
