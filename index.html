@@ -1226,7 +1226,10 @@ async function renderPushLog(){
     const c = await caches.open("diario-log");
     const r = await c.match("./__avisos");
     const list = r ? await r.json() : [];
-    if(!list.length){ $("#pushLog").textContent = "Todavía no ha llegado ninguno a este móvil."; return; }
+    const now = new Date(), hh = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    let ver = "";
+    try{ ver = (await caches.keys()).filter(k => k.startsWith("diario-v")).join(", "); }catch(e){}
+    if(!list.length){ $("#pushLog").textContent = `Comprobado a las ${hh}: ningún aviso ha llegado todavía a este móvil (versión ${ver || "?"}).`; return; }
     $("#pushLog").innerHTML = list.slice(0, 5).map(x => {
       const t = new Date(x.at);
       return `${fmtLong(t)} ${pad(t.getHours())}:${pad(t.getMinutes())} · ${esc(x.title)} · ${x.ok ? "mostrado ✓" : "✗ no se pudo mostrar"}`;
