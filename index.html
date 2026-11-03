@@ -487,14 +487,19 @@ function setStatus(t){ $("#status").textContent = t || ""; }
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 // La app carga esta web desde internet. El puente nativo de Capacitor no trae registerPlugin,
 // así que se usa @capacitor/core (copia local en capacitor-core.js), que habla con ese puente.
-let _core = null, _fm = null, _fa = null;
+// Ojo: un plugin de Capacitor responde a cualquier método, también a «then», así que nunca se
+// devuelve directamente desde una promesa: se guarda dentro de un objeto { p }.
+let _core = null;
+const _plugs = {};
 const capCore = () => _core || (_core = import("./capacitor-core.js"));
-async function nativePlugin(name){
-  if(typeof window.Capacitor?.registerPlugin === "function") return window.Capacitor.registerPlugin(name);
-  return (await capCore()).registerPlugin(name);
+function plug(name){
+  return _plugs[name] || (_plugs[name] = (async () => {
+    const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (await capCore()).registerPlugin;
+    return { p: reg(name) };
+  })());
 }
-const FM = () => _fm || (_fm = nativePlugin("FirebaseMessaging"));
-const FA = () => _fa || (_fa = nativePlugin("FirebaseAuthentication"));
+const fmCall = async (method, ...args) => (await plug("FirebaseMessaging")).p[method](...args);
+const faCall = async (method, ...args) => (await plug("FirebaseAuthentication")).p[method](...args);
 const TOKF = () => isNative() ? "apptokens" : "tokens";
 let nativePerm = "prompt";
 const pushPerm = () => isNative() ? nativePerm : (("Notification" in window) ? Notification.permission : "unsupported");
@@ -582,9 +587,8 @@ $("#googleBtn").onclick = async () => {
   if(isNative()){
     try{
       $("#authErr").textContent = "Abriendo tu cuenta de Google…";
-      const fa = await FA();
       const r = await Promise.race([
-        fa.signInWithGoogle(),
+        faCall("signInWithGoogle"),
         new Promise((_, rej) => setTimeout(() => rej(new Error("Google no ha respondido en 60 segundos")), 60000))
       ]);
       $("#authErr").textContent = "Entrando…";
@@ -653,7 +657,7 @@ $("#verifyResend").onclick = async () => {
   catch(err){ $("#verifyErr").textContent = authMsg(err); }
 };
 
-const logout = async () => { stopDiario(); stopWait(); if(isNative()) FA().then(fa => fa.signOut()).catch(()=>{}); await A.signOut(auth); };
+const logout = async () => { stopDiario(); stopWait(); if(isNative()) faCall("signOut").catch(()=>{}); await A.signOut(auth); };
 $("#pickOut").onclick = logout; $("#outBtn").onclick = logout; $("#verifyOut").onclick = logout;
 
 const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
@@ -664,17 +668,16 @@ const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
 async function setupNative(){
   if(!isNative()) return;
   document.querySelectorAll(".installBtn").forEach(b => b.remove());
-  let fm;
-  try{ fm = await FM(); }catch(e){ showErr("No se han podido cargar las notificaciones nativas: " + (e?.message || e)); return; }
-  fm.checkPermissions().then(p => { nativePerm = p?.receive || "prompt"; renderPerm(); renderAvPerm?.(); }).catch(()=>{});
-  fm.addListener("notificationActionPerformed", ev => {
+  try{ await plug("FirebaseMessaging"); }catch(e){ showErr("No se han podido cargar las notificaciones nativas: " + (e?.message || e)); return; }
+  fmCall("checkPermissions").then(p => { nativePerm = p?.receive || "prompt"; renderPerm(); renderAvPerm?.(); }).catch(()=>{});
+  fmCall("addListener", "notificationActionPerformed", ev => {
     const d = ev?.notification?.data || {};
     if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){
       nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario};
       renderBanner(); window.scrollTo({top:0, behavior:"smooth"});
     }
   }).catch(()=>{});
-  fm.addListener("notificationReceived", ev => {
+  fmCall("addListener", "notificationReceived", ev => {
     const n = ev?.notification || {};
     const d = n.data || {};
     if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){ nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario}; renderBanner(); }
@@ -1301,10 +1304,10 @@ function renderPerm(){
 const hasToken = () => { try{ return !!localStorage.getItem("fcmToken"); }catch(e){ return false; } };
 async function enablePush(){
   if(isNative()){
-    const p = await (await FM()).requestPermissions(); nativePerm = p?.receive || "denied";
+    const p = await fmCall("requestPermissions"); nativePerm = p?.receive || "denied";
     if(nativePerm !== "granted"){ renderPerm(); return null; }
-    try{ await (await FM()).createChannel({id:"recordatorios", name:"Recordatorios", description:"Recordatorios de cepillado y avisos del diario", importance:5, visibility:1, vibration:true, lights:true}); }catch(e){}
-    const { token } = await (await FM()).getToken();
+    try{ await fmCall("createChannel", {id:"recordatorios", name:"Recordatorios", description:"Recordatorios de cepillado y avisos del diario", importance:5, visibility:1, vibration:true, lights:true}); }catch(e){}
+    const { token } = await fmCall("getToken");
     let old = null; try{ old = localStorage.getItem("fcmToken"); localStorage.setItem("fcmToken", token); }catch(e){}
     if(old && old !== token && auth.currentUser) F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {apptokens: F.arrayRemove(old)}).catch(()=>{});
     return token;
