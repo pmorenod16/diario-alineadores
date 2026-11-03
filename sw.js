@@ -1,5 +1,5 @@
 // Service worker: la app funciona sin conexión y muestra los recordatorios.
-const CACHE = "diario-v10";
+const CACHE = "diario-v11";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", e => {

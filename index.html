@@ -186,7 +186,7 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 
 <!-- ===== Cargando ===== -->
 <div class="wrap" id="scrLoading">
-  <div class="hero"><img src="icons/icon-192.png" alt=""><p class="muted">Cargando…</p></div>
+  <div class="hero"><img src="icons/icon-192.png" alt=""><p class="muted">Cargando…</p><p class="muted center" id="slowLoad" hidden>Está tardando más de lo normal. Comprueba la conexión a internet.<br><button class="ghost" type="button" onclick="location.reload()" style="margin-top:10px">Reintentar</button></p></div>
 </div>
 
 <!-- ===== Entrar ===== -->
@@ -464,6 +464,7 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 import { firebaseConfig, vapidKey, timeZone } from "./config.js";
 
 const $ = s => document.querySelector(s);
+setTimeout(() => { const l = document.getElementById("scrLoading"); if(l && !l.hidden) document.getElementById("slowLoad").hidden = false; }, 12000);
 const screens = ["scrSetup","scrLoading","scrAuth","scrVerify","scrPick","scrApp"];
 function show(id){ screens.forEach(s => $("#"+s).hidden = s !== id); window.scrollTo(0,0); }
 let toastT;
@@ -498,7 +499,10 @@ const [{ initializeApp }, A, F] = await Promise.all([
   import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
 ]);
 const app = initializeApp(firebaseConfig);
-const auth = A.getAuth(app);
+// En la app nativa (WebView de Android) getAuth() se queda colgado esperando un iframe de Google:
+// allí se usa initializeAuth sin el sistema de ventanas emergentes.
+const inApp = isNative() || !!window.androidBridge;
+const auth = inApp ? A.initializeAuth(app, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence] }) : A.getAuth(app);
 auth.languageCode = "es";
 let db;
 try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
@@ -577,7 +581,7 @@ $("#googleBtn").onclick = async () => {
     if(err?.code !== "auth/cancelled-popup-request") $("#authErr").textContent = authMsg(err);
   }
 };
-A.getRedirectResult(auth).catch(err => { $("#authErr").textContent = authMsg(err); });
+if(!inApp) A.getRedirectResult(auth).catch(err => { $("#authErr").textContent = authMsg(err); });
 
 let mode = "login";
 function setMode(m){
