@@ -480,17 +480,13 @@ function setStatus(t){ $("#status").textContent = t || ""; }
 // En la app nativa, Capacitor pone window.Capacitor: los avisos los recibe Android directamente
 // (como WhatsApp) y «Entrar con Google» se hace con la cuenta del móvil.
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-let _fm = null, _fa = null;
-// La app carga esta web desde internet, sin el paquete @capacitor/core, así que los plugins
-// se llaman directamente con el puente nativo que Capacitor pone en la página.
-function nativePlugin(name){
-  const C = window.Capacitor;
-  if(typeof C.registerPlugin === "function") return C.registerPlugin(name);
-  return new Proxy({}, { get: (_, method) => {
-    if(method === "then") return undefined;
-    if(method === "addListener") return (eventName, cb) => Promise.resolve(C.nativeCallback(name, "addListener", { eventName }, cb));
-    return (opts = {}) => C.nativePromise(name, method, opts);
-  }});
+// La app carga esta web desde internet. El puente nativo de Capacitor no trae registerPlugin,
+// así que se usa @capacitor/core (copia local en capacitor-core.js), que habla con ese puente.
+let _core = null, _fm = null, _fa = null;
+const capCore = () => _core || (_core = import("./capacitor-core.js"));
+async function nativePlugin(name){
+  if(typeof window.Capacitor?.registerPlugin === "function") return window.Capacitor.registerPlugin(name);
+  return (await capCore()).registerPlugin(name);
 }
 const FM = () => _fm || (_fm = nativePlugin("FirebaseMessaging"));
 const FA = () => _fa || (_fa = nativePlugin("FirebaseAuthentication"));
@@ -580,7 +576,7 @@ $("#googleBtn").onclick = async () => {
   $("#authErr").textContent = "";
   if(isNative()){
     try{
-      const r = await FA().signInWithGoogle();
+      const r = await (await FA()).signInWithGoogle();
       const idToken = r?.credential?.idToken;
       if(!idToken) throw new Error("sin token");
       await A.signInWithCredential(auth, A.GoogleAuthProvider.credential(idToken));
@@ -646,7 +642,7 @@ $("#verifyResend").onclick = async () => {
   catch(err){ $("#verifyErr").textContent = authMsg(err); }
 };
 
-const logout = async () => { stopDiario(); stopWait(); if(isNative()) FA().signOut().catch(()=>{}); await A.signOut(auth); };
+const logout = async () => { stopDiario(); stopWait(); if(isNative()) FA().then(fa => fa.signOut()).catch(()=>{}); await A.signOut(auth); };
 $("#pickOut").onclick = logout; $("#outBtn").onclick = logout; $("#verifyOut").onclick = logout;
 
 const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
@@ -654,18 +650,20 @@ const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
 // (el aviso de cambios de sesión se registra al final del script, cuando ya está todo definido)
 
 // Al tocar un recordatorio en la app nativa, se abre la app y pregunta si marcarlo.
-function setupNative(){
+async function setupNative(){
   if(!isNative()) return;
   document.querySelectorAll(".installBtn").forEach(b => b.remove());
-  FM().checkPermissions().then(p => { nativePerm = p?.receive || "prompt"; renderPerm(); renderAvPerm?.(); }).catch(()=>{});
-  FM().addListener("notificationActionPerformed", ev => {
+  let fm;
+  try{ fm = await FM(); }catch(e){ showErr("No se han podido cargar las notificaciones nativas: " + (e?.message || e)); return; }
+  fm.checkPermissions().then(p => { nativePerm = p?.receive || "prompt"; renderPerm(); renderAvPerm?.(); }).catch(()=>{});
+  fm.addListener("notificationActionPerformed", ev => {
     const d = ev?.notification?.data || {};
     if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){
       nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario};
       renderBanner(); window.scrollTo({top:0, behavior:"smooth"});
     }
   }).catch(()=>{});
-  FM().addListener("notificationReceived", ev => {
+  fm.addListener("notificationReceived", ev => {
     const n = ev?.notification || {};
     const d = n.data || {};
     if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){ nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario}; renderBanner(); }
@@ -1292,10 +1290,10 @@ function renderPerm(){
 const hasToken = () => { try{ return !!localStorage.getItem("fcmToken"); }catch(e){ return false; } };
 async function enablePush(){
   if(isNative()){
-    const p = await FM().requestPermissions(); nativePerm = p?.receive || "denied";
+    const p = await (await FM()).requestPermissions(); nativePerm = p?.receive || "denied";
     if(nativePerm !== "granted"){ renderPerm(); return null; }
-    try{ await FM().createChannel({id:"recordatorios", name:"Recordatorios", description:"Recordatorios de cepillado y avisos del diario", importance:5, visibility:1, vibration:true, lights:true}); }catch(e){}
-    const { token } = await FM().getToken();
+    try{ await (await FM()).createChannel({id:"recordatorios", name:"Recordatorios", description:"Recordatorios de cepillado y avisos del diario", importance:5, visibility:1, vibration:true, lights:true}); }catch(e){}
+    const { token } = await (await FM()).getToken();
     let old = null; try{ old = localStorage.getItem("fcmToken"); localStorage.setItem("fcmToken", token); }catch(e){}
     if(old && old !== token && auth.currentUser) F.updateDoc(F.doc(db,"usuarios",auth.currentUser.uid), {apptokens: F.arrayRemove(old)}).catch(()=>{});
     return token;
