@@ -1283,14 +1283,19 @@ $("#calOff").onclick = async () => {
 };
 
 // ================== recordatorios ==================
-async function loadRem(){
-  try{
-    const s = await F.getDoc(F.doc(db,"usuarios",auth.currentUser.uid));
-    const r = s.exists() ? s.data().rem : null;
-    if(r && r.diarioId === D.id){ for(const k of REM_MEALS) REM[k] = {...REM[k], ...(r[k] || {})}; }
-  }catch(e){}
-  for(const k of REM_MEALS){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
-  renderPerm(); renderBanner();
+// Las horas guardadas se escuchan en directo: aparecen aunque la conexión tarde en llegar
+// (antes, si la primera lectura fallaba, se veían las horas por defecto).
+function loadRem(){
+  const apply = r => {
+    if(r && r.diarioId === D?.id){ for(const k of REM_MEALS) REM[k] = {...REM[k], ...(r[k] || {})}; }
+    const editing = remAutoT || REM_MEALS.some(k => document.activeElement === $("#t-"+k));
+    if(!editing) for(const k of REM_MEALS){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
+    renderPerm(); renderBanner();
+  };
+  apply(null);
+  unsubs.push(F.onSnapshot(F.doc(db,"usuarios",auth.currentUser.uid), snap => {
+    apply(snap.exists() ? snap.data().rem : null);
+  }, () => {}));
 }
 function renderPerm(){
   const p = pushPerm();
