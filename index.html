@@ -481,8 +481,19 @@ function setStatus(t){ $("#status").textContent = t || ""; }
 // (como WhatsApp) y «Entrar con Google» se hace con la cuenta del móvil.
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 let _fm = null, _fa = null;
-const FM = () => _fm || (_fm = window.Capacitor.registerPlugin("FirebaseMessaging"));
-const FA = () => _fa || (_fa = window.Capacitor.registerPlugin("FirebaseAuthentication"));
+// La app carga esta web desde internet, sin el paquete @capacitor/core, así que los plugins
+// se llaman directamente con el puente nativo que Capacitor pone en la página.
+function nativePlugin(name){
+  const C = window.Capacitor;
+  if(typeof C.registerPlugin === "function") return C.registerPlugin(name);
+  return new Proxy({}, { get: (_, method) => {
+    if(method === "then") return undefined;
+    if(method === "addListener") return (eventName, cb) => Promise.resolve(C.nativeCallback(name, "addListener", { eventName }, cb));
+    return (opts = {}) => C.nativePromise(name, method, opts);
+  }});
+}
+const FM = () => _fm || (_fm = nativePlugin("FirebaseMessaging"));
+const FA = () => _fa || (_fa = nativePlugin("FirebaseAuthentication"));
 const TOKF = () => isNative() ? "apptokens" : "tokens";
 let nativePerm = "prompt";
 const pushPerm = () => isNative() ? nativePerm : (("Notification" in window) ? Notification.permission : "unsupported");
