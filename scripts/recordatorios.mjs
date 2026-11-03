@@ -330,6 +330,18 @@ async function runOnce(admin, db) {
     update.lastSent = lastSent;
     await u.ref.update(update);
   }
+  // pruebas pedidas desde el botón «Probar» de la app
+  for (const u of users.docs) {
+    const x = u.data();
+    if (!x.pruebaPedida || !hasDevices(x)) continue;
+    const r = await sendToUser(admin, x, {
+      title: "🔔 Prueba del Diario de Alineadores",
+      body: `Si ves esto con la app cerrada, los avisos funcionan (${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(now)}).`,
+      tipo: "aviso"
+    }, 900);
+    console.log(`Prueba pedida desde la app: entregada a ${r.ok} aparato(s)`);
+    await u.ref.update({ pruebaPedida: false, ...cleanup(admin, r) });
+  }
   console.log(`Recordatorios enviados: ${sent}`);
   const avisos = await followNotices(admin, db, now);
   console.log(`Avisos a seguidores enviados: ${avisos}`);

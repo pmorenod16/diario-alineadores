@@ -681,7 +681,7 @@ async function setupNative(){
     const n = ev?.notification || {};
     const d = n.data || {};
     if(d.meal && /^\d{4}-\d{2}-\d{2}$/.test(d.dia || "")){ nativePrompt = {meal: d.meal, dia: d.dia, diario: d.diario}; renderBanner(); }
-    else if(n.title) toast(n.title + (n.body ? " — " + n.body : ""));
+    else if(n.title){ toast(n.title + (n.body ? " — " + n.body : "")); clearTimeout(toastT); toastT = setTimeout(() => $("#toast").hidden = true, 7000); }
   }).catch(()=>{});
 }
 if(document.readyState === "complete") setupNative(); else window.addEventListener("load", setupNative);
@@ -1361,8 +1361,9 @@ $("#testPush").onclick = async () => {
     if(isNative()){
       const token = await enablePush();
       if(!token) throw new Error("Falta el permiso de notificaciones: actívalo en los ajustes de Android para esta app.");
-      await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {email: myEmail(), apptokens: F.arrayUnion(token)}, {merge:true});
-      t.textContent = "Móvil registrado ✓. Los avisos llegarán como notificaciones normales de Android.";
+      await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), {email: myEmail(), apptokens: F.arrayUnion(token), pruebaPedida: true}, {merge:true});
+      t.textContent = "Móvil registrado ✓. Ahora CIERRA la app: en menos de 5 minutos te llegará una notificación de prueba.";
+      toast("Cierra la app: en menos de 5 minutos te llegará una notificación de prueba.");
       return;
     }
     if(!("Notification" in window)) throw new Error("Este navegador no admite notificaciones.");
