@@ -129,6 +129,20 @@ Si aun así quieres un archivo `.apk` para pasarlo:
 
 ---
 
+## App Android (APK) — recomendada
+
+Es la forma más fiable de recibir los avisos, igual que WhatsApp: Android los entrega directamente a la app, también en Xiaomi.
+
+- **Descarga:** <https://github.com/pmorenod16/diario-alineadores/releases/latest/download/diario-alineadores.apk>
+- Ábrelo en el móvil y pulsa **Instalar**. La primera vez Android pedirá permitir instalar apps de esa fuente (Chrome o Archivos): acéptalo.
+- Al abrir la app, entra con Google o con tu email y acepta las **notificaciones**.
+- Si tenías la versión web instalada desde Chrome, puedes quitarla: la app nativa usa los mismos datos.
+- Para **actualizar**, vuelve a descargar el mismo enlace e instálalo encima. No se pierde nada.
+
+GitHub compila el APK solo cada vez que cambia algo de la carpeta `app/` (Actions → «App Android»). La primera vez registra la app Android en Firebase y crea la clave de firma; la clave queda guardada en Firestore, en un sitio que nadie puede leer desde la app.
+
+---
+
 ## Bueno saber
 
 - **Retraso de los avisos:** GitHub los envía cada 10 minutos y a veces con algo de retraso. Los recordatorios llegan unos minutos después de la hora, y los avisos a los demás entre 1 y 15 minutos después de marcar.
