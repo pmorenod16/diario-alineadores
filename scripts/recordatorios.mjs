@@ -273,15 +273,6 @@ async function diagnose(admin, db) {
     const r = x.rem || {};
     const horas = MEALS.map(m => `${m} ${r[m]?.on === false ? "off" : (r[m]?.time || DEFAULT_REM[m]?.time || "—")}`).join(", ");
     console.log(`Persona ${i}: aparatos registrados: ${tokens.length} (app Android: ${(x.apptokens || []).length}, web: ${(x.tokens || []).length}) · recordatorios: ${r.diarioId ? horas : "sin guardar"} · último enviado: ${JSON.stringify(x.lastSent || {})}`);
-    // prueba solo a la app Android (al lanzarlo a mano), para comprobar que llegan los avisos nativos
-    if ((x.apptokens || []).length) {
-      const r = await sendToUser(admin, { apptokens: x.apptokens }, {
-        title: "🔔 Prueba de la app Android",
-        body: `Si ves esto, la app recibe los avisos como WhatsApp (${new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date())}).`,
-        tipo: "aviso"
-      }, 600);
-      console.log(`  prueba app Android: entregada a ${r.ok} de ${x.apptokens.length}`);
-    }
   }
 }
 
@@ -315,8 +306,16 @@ async function runOnce(admin, db) {
     const update = {};
 
     for (const meal of meals) {
-      lastSent[meal] = sentKey(parts.dia, remTime(rem, meal));
-      if (done[meal]) continue;
+      const key = sentKey(parts.dia, remTime(rem, meal));
+      lastSent[meal] = key;
+      // con revisiones cada minuto pueden coincidir dos a la vez: solo envía la que «reclama» el aviso
+      const claimed = await db.runTransaction(async t => {
+        const cur = (await t.get(u.ref)).data()?.lastSent?.[meal];
+        if (cur === key) return false;
+        t.update(u.ref, { [`lastSent.${meal}`]: key });
+        return true;
+      });
+      if (!claimed || done[meal]) continue;
       const res = await sendToUser(admin, data, {
         title: "🪥 Hora de cepillarse",
         body: `¿Te has lavado los dientes después de ${{ desayuno: "desayunar", comida: "comer", cena: "cenar" }[meal]}?`,
@@ -327,8 +326,7 @@ async function runOnce(admin, db) {
       Object.assign(update, cleanup(admin, res));
     }
 
-    update.lastSent = lastSent;
-    await u.ref.update(update);
+    if (Object.keys(update).length) await u.ref.update(update);
   }
   // pruebas pedidas desde el botón «Probar» de la app
   for (const u of users.docs) {
