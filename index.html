@@ -186,7 +186,7 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 
 <!-- ===== Cargando ===== -->
 <div class="wrap" id="scrLoading">
-  <div class="hero"><img src="icons/icon-192.png" alt=""><p class="muted">Cargando…</p><p class="muted center" id="slowLoad" hidden>Está tardando más de lo normal. Comprueba la conexión a internet.<br><button class="ghost" type="button" onclick="location.reload()" style="margin-top:10px">Reintentar</button></p></div>
+  <div class="hero"><img src="icons/icon-192.png" alt=""><p class="muted">Cargando…</p><p class="muted center" id="loadStep" style="font-size:.78rem"></p><p class="muted center" id="loadErr" style="font-size:.78rem;color:var(--gum)"></p><p class="muted center" id="slowLoad" hidden>Está tardando más de lo normal. Comprueba la conexión a internet.<br><button class="ghost" type="button" onclick="location.reload()" style="margin-top:10px">Reintentar</button></p></div>
 </div>
 
 <!-- ===== Entrar ===== -->
@@ -464,6 +464,11 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
 import { firebaseConfig, vapidKey, timeZone } from "./config.js";
 
 const $ = s => document.querySelector(s);
+const step = t => { const el = document.getElementById("loadStep"); if(el) el.textContent = t; };
+const showErr = m => { const el = document.getElementById("loadErr"); if(el) el.textContent = String(m).slice(0, 200); };
+window.addEventListener("error", e => showErr("Error: " + (e.message || e.error)));
+window.addEventListener("unhandledrejection", e => showErr("Error: " + (e.reason?.code || "") + " " + (e.reason?.message || e.reason)));
+step("Paso 1 de 4: cargando la app…");
 setTimeout(() => { const l = document.getElementById("scrLoading"); if(l && !l.hidden) document.getElementById("slowLoad").hidden = false; }, 12000);
 const screens = ["scrSetup","scrLoading","scrAuth","scrVerify","scrPick","scrApp"];
 function show(id){ screens.forEach(s => $("#"+s).hidden = s !== id); window.scrollTo(0,0); }
@@ -493,6 +498,7 @@ if("serviceWorker" in navigator){
 if(!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PEGA_AQUI")){ show("scrSetup"); throw new Error("config"); }
 
 const V = "10.12.2";
+step("Paso 2 de 4: cargando Firebase…");
 const [{ initializeApp }, A, F] = await Promise.all([
   import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
   import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
@@ -505,7 +511,7 @@ const inApp = isNative() || !!window.androidBridge;
 const auth = inApp ? A.initializeAuth(app, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence] }) : A.getAuth(app);
 auth.languageCode = "es";
 let db;
-try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
+try { db = inApp ? F.getFirestore(app) : F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
 catch(e){ db = F.getFirestore(app); }
 
 // ================== utilidades de fechas ==================
@@ -634,6 +640,7 @@ $("#pickOut").onclick = logout; $("#outBtn").onclick = logout; $("#verifyOut").o
 
 const myEmail = () => (auth.currentUser?.email || "").toLowerCase();
 
+step("Paso 3 de 4: comprobando tu cuenta…");
 A.onAuthStateChanged(auth, user => route(user));
 
 // Al tocar un recordatorio en la app nativa, se abre la app y pregunta si marcarlo.
@@ -661,6 +668,7 @@ async function route(user){
   if(!user){ stopDiario(); stopWait(); setMode("login"); show("scrAuth"); return; }
   if(!user.emailVerified){ $("#verifyEmail").textContent = user.email; $("#verifyErr").textContent = ""; show("scrVerify"); return; }
   show("scrLoading");
+  step("Paso 4 de 4: cargando tus diarios…");
   await loadChoices();
 }
 
