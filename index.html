@@ -1191,7 +1191,7 @@ function renderCode(){
 const inviteLink = () => `${location.origin}${location.pathname}?codigo=${diarioData.codigo}`;
 $("#inviteShare").onclick = async () => {
   if(!diarioData.codigo) return;
-  const text = `Te invito a ver mi Diario de Alineadores. Abre este enlace, instala la app y entra con Google. Tu código es ${fmtCode(diarioData.codigo)}.`;
+  const text = `Te invito a ver mi Diario de Alineadores.\n1) Descarga e instala la app en Android: https://github.com/pmorenod16/diario-alineadores/releases/latest/download/diario-alineadores.apk\n2) Entra con Google o con tu email.\n3) Escribe el código ${fmtCode(diarioData.codigo)} (o abre este enlace).`;
   try{
     if(navigator.share){ await navigator.share({title:"Diario de Alineadores", text, url:inviteLink()}); return; }
   }catch(e){ if(e?.name === "AbortError") return; }
