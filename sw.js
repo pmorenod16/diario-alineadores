@@ -1,5 +1,5 @@
 // Service worker: la app funciona sin conexión y muestra los recordatorios.
-const CACHE = "diario-v13";
+const CACHE = "diario-v14";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -64,7 +64,7 @@ self.addEventListener("push", e => {
       await self.registration.showNotification(title, {
         ...base,
         requireInteraction: d.tipo !== "aviso",
-        actions: meal ? [{ action: "hecho", title: "✓ Ya me los he lavado" }] : []
+        actions: meal ? [{ action: "hecho", title: meal === "cambio" ? "✓ Ya lo he cambiado" : "✓ Ya me los he lavado" }] : []
       });
       await logPush({ title, ok: true });
     } catch (err) {

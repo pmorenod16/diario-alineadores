@@ -422,6 +422,11 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
         <label class="switch"><input type="checkbox" id="on-cena" checked aria-label="Aviso de la cena activado"><span></span></label>
       </div>
       <div class="li">
+        <div class="txt"><b>Cambio de alineador</b><span>Avisa el día que toca cambiar, y cada día si se retrasa</span></div>
+        <input type="time" id="t-cambio" value="10:00" aria-label="Hora del aviso de cambio de alineador">
+        <label class="switch"><input type="checkbox" id="on-cambio" checked aria-label="Aviso de cambio de alineador activado"><span></span></label>
+      </div>
+      <div class="li">
         <div class="txt muted" id="remMsg">Los avisos pueden llegar con unos minutos de retraso.</div>
         <button class="ghost" id="remSave">Guardar horas</button>
       </div>
@@ -513,7 +518,8 @@ function tryAutoMark(){
   autoMark = null; nativePrompt = null;
   if(!canWrite()){ toast("Solo puedes ver este diario."); return; }
   if(!dayData(dia)[meal]) setField(dia, meal, true);
-  const t = `✓ Marcado: cepillado después de ${VERBO[meal] || meal}${dia === keyOf(today()) ? "" : ` (${fmtLong(parseKey(dia))})`}`;
+  const cuando = dia === keyOf(today()) ? "" : ` (${fmtLong(parseKey(dia))})`;
+  const t = meal === "cambio" ? `✓ Marcado: cambio de alineador${cuando}` : `✓ Marcado: cepillado después de ${VERBO[meal] || meal}${cuando}`;
   toast(t); clearTimeout(toastT); toastT = setTimeout(() => $("#toast").hidden = true, 5000);
 }
 
@@ -822,8 +828,9 @@ let visits = [];
 let sel = keyOf(today());
 let month = new Date(today().getFullYear(), today().getMonth(), 1);
 let unsubs = [];
-let REM = {desayuno:{time:"09:30",on:true}, comida:{time:"16:00",on:true}, cena:{time:"23:00",on:true}};
+let REM = {desayuno:{time:"09:30",on:true}, comida:{time:"16:00",on:true}, cena:{time:"23:00",on:true}, cambio:{time:"10:00",on:true}};
 const REM_MEALS = ["desayuno","comida","cena"];
+const REM_ALL = [...REM_MEALS, "cambio"];
 const VERB = {desayuno:"desayunar", comida:"comer", cena:"cenar"};
 const isOwner = () => D?.role === "owner";
 const canWrite = () => D && (D.role === "owner" || D.role === "editar");
@@ -1028,7 +1035,8 @@ function renderBanner(){
     const {meal, dia} = nativePrompt;
     $("#banner").hidden = !!dayData(dia)[meal];
     if(dayData(dia)[meal]){ nativePrompt = null; return; }
-    $("#bannerText").textContent = `¿Te has lavado los dientes después de ${VERBO[meal] || meal}${dia === keyOf(today()) ? "" : ` (${fmtLong(parseKey(dia))})`}?`;
+    $("#bannerText").textContent = meal === "cambio" ? "Toca cambiar de alineador. ¿Ya te has puesto el nuevo?" : `¿Te has lavado los dientes después de ${VERBO[meal] || meal}${dia === keyOf(today()) ? "" : ` (${fmtLong(parseKey(dia))})`}?`;
+    $("#bannerBtn").textContent = meal === "cambio" ? "Ya lo he cambiado" : "Ya me los he lavado";
     $("#bannerBtn").dataset.k = meal; $("#bannerBtn").dataset.dia = dia;
     return;
   }
@@ -1044,7 +1052,7 @@ function renderBanner(){
     if(mins >= start && mins < end){ if(!dd[k]) which = k; break; }
   }
   b.hidden = !which;
-  if(which){ $("#bannerText").textContent = `¿Te has lavado los dientes después de ${VERB[which]}?`; $("#bannerBtn").dataset.k = which; }
+  if(which){ $("#bannerText").textContent = `¿Te has lavado los dientes después de ${VERB[which]}?`; $("#bannerBtn").dataset.k = which; $("#bannerBtn").textContent = "Ya me los he lavado"; }
 }
 
 function renderVisits(){
@@ -1142,11 +1150,11 @@ function handleMarkParam(){
   if(!m) return;
   markHandled = true;
   history.replaceState(null, "", location.pathname);
-  if(!["desayuno","comida","cena"].includes(m) || !/^\d{4}-\d{2}-\d{2}$/.test(dia||"")) return;
+  if(!["desayuno","comida","cena","cambio"].includes(m) || !/^\d{4}-\d{2}-\d{2}$/.test(dia||"")) return;
   if(q.get("d") && q.get("d") !== D.id) return;
   if(!canWrite()){ toast("Solo puedes ver este diario."); return; }
   setField(dia, m, true);
-  toast(`Marcado: cepillado después de ${m==="cena"?"cenar":m==="comida"?"comer":"desayunar"} ✓`);
+  toast(m==="cambio" ? "Marcado: cambio de alineador ✓" : `Marcado: cepillado después de ${m==="cena"?"cenar":m==="comida"?"comer":"desayunar"} ✓`);
 }
 
 // ================== compartir ==================
@@ -1300,9 +1308,9 @@ $("#calOff").onclick = async () => {
 // (antes, si la primera lectura fallaba, se veían las horas por defecto).
 function loadRem(){
   const apply = r => {
-    if(r && r.diarioId === D?.id){ for(const k of REM_MEALS) REM[k] = {...REM[k], ...(r[k] || {})}; }
-    const editing = remAutoT || REM_MEALS.some(k => document.activeElement === $("#t-"+k));
-    if(!editing) for(const k of REM_MEALS){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
+    if(r && r.diarioId === D?.id){ for(const k of REM_ALL) REM[k] = {...REM[k], ...(r[k] || {})}; }
+    const editing = remAutoT || REM_ALL.some(k => document.activeElement === $("#t-"+k));
+    if(!editing) for(const k of REM_ALL){ $("#t-"+k).value = REM[k].time; $("#on-"+k).checked = REM[k].on; }
     renderPerm(); renderBanner();
   };
   apply(null);
@@ -1401,10 +1409,10 @@ $("#testPush").onclick = async () => {
 };
 async function saveRem(withToken){
   const next = {};
-  for(const k of REM_MEALS) next[k] = {time: $("#t-"+k).value || REM[k].time, on: $("#on-"+k).checked};
+  for(const k of REM_ALL) next[k] = {time: $("#t-"+k).value || REM[k].time, on: $("#on-"+k).checked};
   REM = next;
   const data = {email: myEmail(), nombre: auth.currentUser.displayName || "",
-    rem: {diarioId: D.id, tz: timeZone, desayuno: next.desayuno, comida: next.comida, cena: next.cena}};
+    rem: {diarioId: D.id, tz: timeZone, desayuno: next.desayuno, comida: next.comida, cena: next.cena, cambio: next.cambio}};
   if(withToken) data[TOKF()] = F.arrayUnion(withToken);
   await F.setDoc(F.doc(db,"usuarios",auth.currentUser.uid), data, {merge:true});
   renderBanner();
@@ -1466,7 +1474,7 @@ $("#remSave").onclick = async () => {
     remAutoT = null;
     await saveRem(token);
     const f = k => REM[k].on ? REM[k].time : "desactivado";
-    $("#remMsg").textContent = `Guardado. Desayuno: ${f("desayuno")} · Comida: ${f("comida")} · Cena: ${f("cena")}.`;
+    $("#remMsg").textContent = `Guardado. Desayuno: ${f("desayuno")} · Comida: ${f("comida")} · Cena: ${f("cena")} · Cambio: ${f("cambio")}.`;
     if(!hasToken()) toast("Guardado. Activa las notificaciones para recibir los avisos.");
   }catch(e){ $("#remMsg").textContent = "No se ha podido guardar. Revisa la conexión."; }
 };
@@ -1478,7 +1486,7 @@ function remAutoSave(){
   $("#remMsg").textContent = "Guardando…";
   remAutoT = setTimeout(() => $("#remSave").click(), 700);
 }
-for(const k of ["desayuno","comida","cena"]){
+for(const k of ["desayuno","comida","cena","cambio"]){
   $("#t-"+k).addEventListener("change", remAutoSave);
   $("#t-"+k).addEventListener("blur", remAutoSave);
   $("#on-"+k).addEventListener("change", remAutoSave);

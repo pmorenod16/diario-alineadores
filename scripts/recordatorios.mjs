@@ -31,6 +31,78 @@ export function remTime(rem, meal) {
 /** Marca de "ya avisado": el día y la hora del aviso. Si cambias la hora, vuelve a avisar. */
 export const sentKey = (dia, time) => `${dia} ${time}`;
 
+// ---------- aviso de cambio de alineador ----------
+export const DEFAULT_CAMBIO = { time: "10:00", on: true };
+const dayNum = dia => Date.UTC(+dia.slice(0, 4), +dia.slice(5, 7) - 1, +dia.slice(8, 10)) / 864e5;
+const addDia = (dia, n) => new Date((dayNum(dia) + n) * 864e5).toISOString().slice(0, 10);
+
+/** ¿Toca cambiar hoy? lastChange "YYYY-MM-DD" (último cambio marcado), interval en días. */
+export function changeDue(lastChange, interval, hoy) {
+  if (!lastChange) return null;
+  const due = addDia(lastChange, Math.max(1, Number(interval) || 7));
+  const late = dayNum(hoy) - dayNum(due);
+  return late >= 0 ? { due, late } : null;
+}
+
+/** Nº de alineador que se lleva puesto hasta upTo (misma regla que la app). */
+export function alignerNumberAt(alineador, changeDays, upTo) {
+  const changes = changeDays.filter(d => d <= upTo);
+  if (!alineador?.num) return changes.length;
+  return Number(alineador.num) + changes.filter(d => d > (alineador.tras || "")).length;
+}
+
+/** Solo una revisión envía cada aviso aunque coincidan dos a la vez. */
+async function claimSent(db, ref, field, key) {
+  return db.runTransaction(async t => {
+    const cur = (await t.get(ref)).data()?.lastSent?.[field];
+    if (cur === key) return false;
+    t.update(ref, { [`lastSent.${field}`]: key });
+    return true;
+  });
+}
+
+async function changeReminders(admin, db, users, now) {
+  let sent = 0;
+  for (const u of users.docs) {
+    const data = u.data(), rem = data.rem;
+    if (!rem?.diarioId || !hasDevices(data)) continue;
+    const cfg = { ...DEFAULT_CAMBIO, ...(rem.cambio || {}) };
+    if (cfg.on === false || typeof cfg.time !== "string") continue;
+    const parts = localParts(now, rem.tz || "Europe/Madrid");
+    const [h, m] = cfg.time.split(":").map(Number);
+    const at = h * 60 + m;
+    if (!(parts.mins >= at && parts.mins < at + WINDOW_MIN)) continue;
+    const key = sentKey(parts.dia, cfg.time);
+    if (data.lastSent?.cambio === key) continue;
+
+    const diario = await db.doc(`diarios/${rem.diarioId}`).get();
+    if (!diario.exists) continue;
+    const dd = diario.data();
+    if (dd.ownerUid !== u.id) {
+      const acc = await db.doc(`accesos/${rem.diarioId}__${String(data.email || "").toLowerCase()}`).get();
+      if (!acc.exists || acc.data().role !== "editar") continue;
+    }
+    const changeDays = (await db.collection(`diarios/${rem.diarioId}/dias`).where("cambio", "==", true).get())
+      .docs.map(d => d.id).filter(d => d <= parts.dia).sort();
+    const st = changeDue(changeDays[changeDays.length - 1], dd.interval, parts.dia);
+    if (!st) continue;
+    if (!(await claimSent(db, u.ref, "cambio", key))) continue;
+    const next = alignerNumberAt(dd.alineador, changeDays, parts.dia) + 1;
+    const res = await sendToUser(admin, data, {
+      title: "😁 Toca cambiar de alineador",
+      body: st.late > 0
+        ? `Te toca ponerte el alineador nº ${next} (vas ${st.late} día${st.late > 1 ? "s" : ""} tarde). Toca aquí cuando lo hayas cambiado.`
+        : `Hoy toca ponerte el alineador nº ${next}. Toca aquí cuando lo hayas cambiado.`,
+      meal: "cambio", dia: parts.dia, diario: rem.diarioId, tipo: "recordatorio"
+    }, WINDOW_MIN * 60);
+    sent += res.ok;
+    console.log(`  cambio de alineador (nº ${next}): enviado a ${res.ok} aparato(s)`);
+    const c = cleanup(admin, res);
+    if (Object.keys(c).length) await u.ref.update(c);
+  }
+  return sent;
+}
+
 /** Comidas cuyo aviso toca ahora. */
 export function dueMeals(rem, parts, lastSent = {}) {
   const out = [];
@@ -310,12 +382,7 @@ async function runOnce(admin, db) {
       const key = sentKey(parts.dia, remTime(rem, meal));
       lastSent[meal] = key;
       // con revisiones cada minuto pueden coincidir dos a la vez: solo envía la que «reclama» el aviso
-      const claimed = await db.runTransaction(async t => {
-        const cur = (await t.get(u.ref)).data()?.lastSent?.[meal];
-        if (cur === key) return false;
-        t.update(u.ref, { [`lastSent.${meal}`]: key });
-        return true;
-      });
+      const claimed = await claimSent(db, u.ref, meal, key);
       if (!claimed || done[meal]) continue;
       const res = await sendToUser(admin, data, {
         title: "🪥 Hora de cepillarse",
@@ -341,6 +408,7 @@ async function runOnce(admin, db) {
     console.log(`Prueba pedida desde la app: entregada a ${r.ok} aparato(s)`);
     await u.ref.update({ pruebaPedida: false, ...cleanup(admin, r) });
   }
+  sent += await changeReminders(admin, db, users, now);
   console.log(`Recordatorios enviados: ${sent}`);
   const avisos = await followNotices(admin, db, now);
   console.log(`Avisos a seguidores enviados: ${avisos}`);
