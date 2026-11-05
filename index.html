@@ -879,7 +879,10 @@ function applyRole(){
   const view = D.role === "ver";
   for(const id of ["secBrush","secAl","dayNav","banner"]) $("#"+id).hidden = view;
   $("#secAvisos").hidden = isOwner();
-  $("#secDent").hidden = view;
+  // las citas del dentista las ve todo el mundo; quien solo ve las tiene arriba, antes del mes
+  const dent = $("#secDent"), monthSec = $("#h-month").closest("section");
+  dent.hidden = false;
+  if(view) monthSec.before(dent); else monthSec.after(dent);
   $("#secRem").hidden = view;
   $("#secShare").hidden = !isOwner();
   $("#calCard").hidden = !isOwner();
