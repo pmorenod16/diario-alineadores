@@ -72,6 +72,9 @@ jobs:
           EOF
           # versión = número de compilación de GitHub, para que el móvil acepte la actualización
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          # la app abre la web con ?apk=N para saber qué versión del APK está instalada
+          sed -i 's#"url": "https://pmorenod16.github.io/diario-alineadores/"#"url": "https://pmorenod16.github.io/diario-alineadores/?apk=${{ github.run_number }}"#' capacitor.config.json
+          grep -q '?apk=' capacitor.config.json
           npx @capacitor/assets generate --android --iconBackgroundColor '#17806F' --splashBackgroundColor '#F3F6F5'
           npx cap sync android
 

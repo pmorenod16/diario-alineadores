@@ -167,6 +167,12 @@ section{display:flex;flex-direction:column;gap:10px}
 .switch input:checked + span{background:var(--accent)}
 .switch input:checked + span::after{transform:translateX(18px)}
 .switch input:focus-visible + span{outline:3px solid var(--accent);outline-offset:2px}
+.updbar{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(520px,calc(100% - 24px));display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--accent);color:#fff;border-radius:14px;padding:12px 14px;z-index:30;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+.updbar p{margin:0;font-weight:600;font-size:.92rem;line-height:1.3}
+.updbar p span{display:block;font-weight:400;font-size:.8rem;opacity:.9}
+.updbar .ub{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.updbar button{background:#fff;color:var(--accent);border:0;border-radius:10px;padding:9px 14px;font-weight:700;font-size:.9rem;cursor:pointer}
+.updbar button.x{background:transparent;color:#fff;padding:6px 8px;font-size:1.1rem}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:.9rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.2)}
 .status{font-size:.8rem;color:var(--muted);min-height:1em}
 .pickitem{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px}
@@ -463,6 +469,10 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:10px;fl
   </footer>
 </div>
 
+<div class="updbar" id="updBar" role="alert" hidden>
+  <p id="updText">Hay una versión nueva de la app<span>Tarda un segundo y no se pierde nada.</span></p>
+  <div class="ub"><button id="updBtn" type="button">Actualizar</button><button class="x" id="updX" type="button" aria-label="Ahora no">✕</button></div>
+</div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script type="module">
@@ -528,6 +538,57 @@ let swReg = null;
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("./sw.js", {scope:"./"}).then(r => swReg = r).catch(()=>{});
 }
+
+// ---- avisar de versiones nuevas ----
+// APP_VERSION cambia en cada publicación. La app compara con la publicada y,
+// si es distinta, enseña el botón «Actualizar». En la app de Android también mira si hay un APK nuevo.
+const APP_VERSION = "2026-11-05-192741";
+const APK_URL = "https://github.com/pmorenod16/diario-alineadores/releases/latest/download/diario-alineadores.apk";
+{
+  const q = new URLSearchParams(location.search).get("apk");
+  if(q) try{ localStorage.setItem("apkVer", q); }catch(e){}
+}
+const apkVer = () => { try{ return Number(localStorage.getItem("apkVer")) || 0; }catch(e){ return 0; } };
+let updShown = "", updDismissed = "", lastApkCheck = 0;
+function showUpdate(kind, text, sub, btn){
+  if(updShown === "web" && kind === "apk") return;     // primero la web; el APK, después
+  if(updDismissed === kind + text) return;
+  updShown = kind;
+  $("#updText").innerHTML = `${text}<span>${sub}</span>`;
+  $("#updBtn").textContent = btn;
+  $("#updBar").hidden = false;
+}
+$("#updX").onclick = () => { updDismissed = updShown + $("#updText").firstChild.textContent; updShown = ""; $("#updBar").hidden = true; };
+$("#updBtn").onclick = async () => {
+  if(updShown === "apk"){ location.href = APK_URL; return; }
+  $("#updBtn").disabled = true; $("#updBtn").textContent = "Actualizando…";
+  try{ await (swReg || await navigator.serviceWorker?.getRegistration())?.update(); }catch(e){}
+  const u = new URL(location.href); u.searchParams.set("v", Date.now());
+  ["marcar","dia","d"].forEach(k => u.searchParams.delete(k));
+  location.replace(u.toString());
+};
+async function checkUpdate(){
+  if(!navigator.onLine) return;
+  try{
+    const r = await fetch("./index.html?check=" + Date.now(), {cache:"no-store"});
+    const m = r.ok && (await r.text()).match(/const APP_VERSION\s*=\s*"([^"]+)"/);
+    if(m && m[1] !== APP_VERSION){
+      showUpdate("web", "Hay una versión nueva de la app", "Tarda un segundo y no se pierde nada.", "Actualizar");
+      return;
+    }
+  }catch(e){}
+  if(isNative() && Date.now() - lastApkCheck > 30*60*1000){
+    lastApkCheck = Date.now();
+    try{
+      const r = await fetch("https://api.github.com/repos/pmorenod16/diario-alineadores/releases/latest", {cache:"no-store"});
+      const n = r.ok ? Number(((await r.json()).tag_name || "").split(".").pop()) : 0;
+      if(n && n > apkVer()) showUpdate("apk", "Hay una versión nueva de la app de Android", "Pulsa «Descargar», ábrela e instálala encima. No se pierde nada.", "Descargar");
+    }catch(e){}
+  }
+}
+setTimeout(checkUpdate, 4000);
+setInterval(checkUpdate, 10*60*1000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) checkUpdate(); });
 
 if(!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("PEGA_AQUI")){ show("scrSetup"); throw new Error("config"); }
 
