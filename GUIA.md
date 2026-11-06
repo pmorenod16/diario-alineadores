@@ -148,5 +148,5 @@ GitHub compila el APK solo cada vez que cambia algo de la carpeta `app/` (Action
 - **Retraso de los avisos:** GitHub los envía cada 10 minutos y a veces con algo de retraso. Los recordatorios llegan unos minutos después de la hora, y los avisos a los demás entre 1 y 15 minutos después de marcar.
 - **Recordatorio ya marcado:** si a la hora del aviso ya lo has marcado, no se envía. Si no se pudo enviar en los 90 minutos siguientes a la hora elegida, ese día se salta.
 - **Cada móvil, sus avisos:** las notificaciones se activan en cada móvil. Si alguien cambia de móvil, vuelve a pulsar **Activar**.
-- **Actualizar la app:** cuando se publica una versión nueva, la app enseña arriba un aviso con el botón **Actualizar**. En la app de Android, si hay un APK nuevo, el aviso trae el botón **Descargar**: se abre e instala encima, sin perder nada.
+- **Actualizar la app:** se actualiza sola. Cada vez que se abre (o vuelves a ella) mira si hay una versión nueva y, si la hay, se recarga con ella. Si hay un APK nuevo, la app de Android abre su descarga una vez: ábrela e instálala encima, sin perder nada.
 - **Coste:** con el uso de una familia estás muy por debajo de los límites gratuitos de Firebase y GitHub.
